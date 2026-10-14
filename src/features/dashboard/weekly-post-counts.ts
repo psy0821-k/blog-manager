@@ -45,3 +45,23 @@ export function aggregateWeeklyPostCounts(
 
   return counts.map((count, index) => ({ week: index + 1, count, isFuture: index + 1 > currentWeek }));
 }
+
+export interface WeeklyPostSummary {
+  /** 모든 주차의 발행 편수 합 */
+  totalCount: number;
+  /** 이미 시작된 주차 중 글을 올린 주차의 수 */
+  activeWeekCount: number;
+  /** 지나지 않은 주차를 뺀, 이미 시작된 주차의 수 */
+  startedWeekCount: number;
+}
+
+/** 주차별 편수를 카드 요약에 쓰는 세 가지 숫자로 줄인다. */
+export function summarizeWeeklyPostCounts(weeks: ReadonlyArray<WeeklyPostCount>): WeeklyPostSummary {
+  const startedWeeks = weeks.filter(week => !week.isFuture);
+
+  return {
+    totalCount: weeks.reduce((sum, week) => sum + week.count, 0),
+    activeWeekCount: startedWeeks.filter(week => week.count > 0).length,
+    startedWeekCount: startedWeeks.length,
+  };
+}

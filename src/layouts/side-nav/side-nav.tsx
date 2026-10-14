@@ -3,7 +3,6 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -16,8 +15,6 @@ import { NAV_ITEMS } from './nav-items';
 import { BookOpen } from 'lucide-react';
 import { Link, Outlet } from 'react-router-dom';
 import { NavMenuItem } from './nav-menu-item';
-import { QuickLinkMenuItem } from './quick-link-menu-item';
-import { QUICK_LINKS } from './quick-links';
 
 interface SideNavProps {
   user: string | null;

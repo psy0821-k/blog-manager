@@ -50,17 +50,6 @@ const SideNav = ({ user }: SideNavProps) => {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-
-          <SidebarGroup>
-            <SidebarGroupLabel>바로가기</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {QUICK_LINKS.map(link => (
-                  <QuickLinkMenuItem key={link.url} {...link} />
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
         </SidebarContent>
       </Sidebar>
 

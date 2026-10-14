@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { WeeklyConsistencyCard } from './weekly-consistency-card';
-import type { WeeklyPostCount } from './weekly-post-counts';
+import { WeeklyConsistencyCard } from '../weekly-consistency-card';
+import type { WeeklyPostCount } from '../weekly-post-counts';
 
 const MONTH_LABEL = '2026년 10월';
 

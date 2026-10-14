@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateWeeklyPostCounts, formatMonthLabel, getWeekOfMonth } from './weekly-post-counts';
+import { aggregateWeeklyPostCounts, formatMonthLabel, getWeekOfMonth } from '../weekly-post-counts';
 
 /** 로컬 시간 기준 날짜로 createdAt(ISO 문자열)을 가진 글 하나를 만든다. */
 function makePost(year: number, month: number, day: number, hour = 12, minute = 0, second = 0) {

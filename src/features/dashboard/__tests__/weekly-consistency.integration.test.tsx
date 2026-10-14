@@ -1,13 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../../lib/api-client';
-import type { PostListItem, PostListResponse, PostType } from '../posts/post-types';
-import { fetchPostList } from '../posts/posts-api';
-import { WeeklyConsistencySection } from './weekly-consistency-section';
+import { ApiError } from '../../../lib/api-client';
+import type { PostListItem, PostListResponse, PostType } from '../../posts/post-types';
+import { fetchPostList } from '../../posts/posts-api';
+import { WeeklyConsistencySection } from '../weekly-consistency-section';
 
 // HTTP 경계(fetchPostList)만 가짜로 두고 조회 함수, 훅, 집계, 섹션, 카드는 실제로 연결해 검증한다
-vi.mock('../posts/posts-api', () => ({ fetchPostList: vi.fn() }));
+vi.mock('../../posts/posts-api', () => ({ fetchPostList: vi.fn() }));
 
 const mockedFetchPostList = vi.mocked(fetchPostList);
 

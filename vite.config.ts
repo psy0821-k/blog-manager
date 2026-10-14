@@ -1,7 +1,8 @@
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import path from 'node:path'
-import { defineConfig, loadEnv } from 'vite'
+import { loadEnv } from 'vite'
+import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -13,6 +14,12 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: { '@': path.resolve(import.meta.dirname, './src') },
+    },
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./src/test/setup.ts'],
+      // Playwright E2E 스펙은 Vitest가 읽지 않는다
+      exclude: ['e2e/**', 'node_modules/**'],
     },
     server: {
       // 블로그의 CORS 설정 전까지 개발 서버가 /api를 중계한다

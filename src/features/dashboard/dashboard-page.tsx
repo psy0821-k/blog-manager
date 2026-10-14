@@ -1,18 +1,10 @@
-import {
-  MOCK_IDEAS,
-  MOCK_MONTH_LABEL,
-  MOCK_RECENT_POSTS,
-  MOCK_STALE_DRAFTS,
-  MOCK_TODOS,
-  MOCK_WEEKLY_POSTS,
-  WEEKLY_POST_GOAL,
-} from './dashboard-mock';
+import { MOCK_IDEAS, MOCK_RECENT_POSTS, MOCK_STALE_DRAFTS, MOCK_TODOS } from './dashboard-mock';
 import { IdeaGeneratorCard } from './idea-generator-card';
 import { IdeaProgressCard } from './idea-progress-card';
 import { PostListCard } from './post-list-card';
 import { QuickLinksCard } from './quick-links-card';
 import { TodoSummaryCard } from './todo-summary-card';
-import { WeeklyConsistencyCard } from './weekly-consistency-card';
+import { WeeklyConsistencySection } from './weekly-consistency-section';
 
 export function DashboardPage() {
   return (
@@ -24,7 +16,7 @@ export function DashboardPage() {
       <div className="space-y-3">
         <h2 className="font-medium">나의 게시글 현황</h2>
         <div className="grid gap-4 md:grid-cols-3">
-          <WeeklyConsistencyCard monthLabel={MOCK_MONTH_LABEL} weeks={MOCK_WEEKLY_POSTS} goal={WEEKLY_POST_GOAL} />
+          <WeeklyConsistencySection />
           <PostListCard
             title="최근 게시글"
             description="최근 발행한 글"

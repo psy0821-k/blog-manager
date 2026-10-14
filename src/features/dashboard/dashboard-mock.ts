@@ -2,13 +2,6 @@
 import type { IdeaStatus } from '../ideas/idea-types';
 import type { PostType } from '../posts/post-types';
 
-export interface WeeklyPostCount {
-  week: number;
-  count: number;
-  /** 아직 지나지 않은 주차 */
-  isFuture: boolean;
-}
-
 /** 게시글 목록 카드에서 쓰는 한 줄 요약. meta는 날짜나 경과일 같은 우측 표시 문구. */
 export interface PostSummary {
   id: number;
@@ -46,19 +39,6 @@ export interface ChatMessage {
   text: string;
   suggestions?: IdeaSuggestion[];
 }
-
-/** 주간 목표 발행 편수. 설정 화면이 생기기 전까지 상수로 둔다. */
-export const WEEKLY_POST_GOAL = 2;
-
-export const MOCK_MONTH_LABEL = '2026년 10월';
-
-export const MOCK_WEEKLY_POSTS: WeeklyPostCount[] = [
-  { week: 1, count: 3, isFuture: false },
-  { week: 2, count: 1, isFuture: false },
-  { week: 3, count: 0, isFuture: true },
-  { week: 4, count: 0, isFuture: true },
-  { week: 5, count: 0, isFuture: true },
-];
 
 export const MOCK_RECENT_POSTS: PostSummary[] = [
   { id: 1, title: '포트폴리오 3D 씬 최적화 기록', type: 'PROJECT', meta: '10-08' },

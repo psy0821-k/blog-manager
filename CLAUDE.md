@@ -11,7 +11,7 @@ npm run lint       # oxlint
 npm test           # vitest run (jsdom)
 npx vitest run src/features/dashboard/__tests__/weekly-post-counts.test.ts   # 파일 하나
 npx vitest run -t "테스트 이름 일부"                                          # 이름으로 하나
-npm run test:e2e   # playwright test (e2e/ 폴더는 아직 없음, 개발 서버를 자동으로 띄우거나 재사용)
+npm run test:e2e   # playwright test (e2e/ 폴더, 개발 서버를 자동으로 띄우거나 재사용)
 ```
 
 ## 환경변수
@@ -51,13 +51,16 @@ src/lib/api-client.ts의 apiGet  →  fetch
 
 ### 대시보드는 대부분 가짜 데이터다
 
-`src/features/dashboard/dashboard-mock.ts`의 mock으로 그린다. 예: "아이디어 생성" AI 대화는 `setTimeout` 뒤 고정 응답을 붙이는 가짜이고 실제 AI는 연결되지 않았다. **실데이터로 연결된 것은 "주차별 성실도"와 "최근 게시글" 카드뿐이다.**
+`src/features/dashboard/dashboard-mock.ts`의 mock으로 그린다. 예: "아이디어 생성" AI 대화는 `setTimeout` 뒤 고정 응답을 붙이는 가짜이고 실제 AI는 연결되지 않았다. **실데이터로 연결된 것은 "주차별 성실도", "최근 게시글", "임시 저장 게시물" 카드뿐이다.**
 
 주차별 성실도의 흐름:
 `api/weekly-consistency-api.ts`(프로젝트·랩 발행 글을 병렬 조회, 하나라도 실패하면 reject) → `use-weekly-post-counts.ts`(조회 후 집계) → `weekly-post-counts.ts`(순수 함수: 이번 달을 1일 기준 7일 단위 주차로 계산) → `weekly-consistency-section.tsx`가 상태에 따라 로딩/에러/카드 중 하나를 고른다. 개발일지와 임시저장은 집계하지 않는다.
 
 최근 게시글의 흐름:
 `api/recent-posts-api.ts`(프로젝트·랩·개발일지의 최신 1건씩을 병렬 조회, 종류 고정 순서, 글이 없는 종류는 빠짐, 하나라도 실패하면 reject) → `use-recent-posts.ts` → `recent-posts-section.tsx`가 `PostListCard`의 `status`(loading/error/success)로 상태를 표시한다. 임시저장은 포함하지 않는다.
+
+임시 저장 게시물의 흐름:
+`api/draft-posts-api.ts`(세 종류를 `draft: true`, `pageSize: 50`으로 병렬 조회해 합치고 `updatedAt` 오름차순 상위 3건만 남김, 하나라도 실패하면 reject) → `use-draft-posts.ts` → `draft-posts-section.tsx`가 `PostListCard`로 표시하고 우측에는 `elapsed-days.ts`의 `formatElapsedDays`('오늘', 'N일 전')를 쓴다. `draft=true`는 관리자 토큰이 필요해서 토큰이 없거나 거부되면(401/403) 일반 에러와 같은 화면이 나온다. 종류별 임시저장이 50건을 넘으면 가장 오래된 글이 빠질 수 있다.
 
 ## 컨벤션
 

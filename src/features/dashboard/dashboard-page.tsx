@@ -1,8 +1,9 @@
-import { MOCK_IDEAS, MOCK_RECENT_POSTS, MOCK_STALE_DRAFTS, MOCK_TODOS } from './dashboard-mock';
+import { MOCK_IDEAS, MOCK_STALE_DRAFTS, MOCK_TODOS } from './dashboard-mock';
 import { IdeaGeneratorCard } from './idea-generator-card';
 import { IdeaProgressCard } from './idea-progress-card';
 import { PostListCard } from './post-list-card';
 import { QuickLinksCard } from './quick-links-card';
+import { RecentPostsSection } from './recent-posts-section';
 import { TodoSummaryCard } from './todo-summary-card';
 import { WeeklyConsistencySection } from './weekly-consistency-section';
 
@@ -17,13 +18,7 @@ export function DashboardPage() {
         <h2 className="font-medium">나의 게시글 현황</h2>
         <div className="grid gap-4 md:grid-cols-3">
           <WeeklyConsistencySection />
-          <PostListCard
-            title="최근 게시글"
-            description="최근 발행한 글"
-            posts={MOCK_RECENT_POSTS}
-            emptyText="아직 발행한 글이 없어요."
-            moreHref="/manage"
-          />
+          <RecentPostsSection />
           <PostListCard
             title="임시 저장 게시물"
             description="수정한 지 오래된 순"

@@ -4,7 +4,7 @@ import type { PostType } from '../posts/post-types';
 
 /** 게시글 목록 카드에서 쓰는 한 줄 요약. meta는 날짜나 경과일 같은 우측 표시 문구. */
 export interface PostSummary {
-  id: number;
+  id: number | string;
   title: string;
   type: PostType;
   meta: string;
@@ -39,12 +39,6 @@ export interface ChatMessage {
   text: string;
   suggestions?: IdeaSuggestion[];
 }
-
-export const MOCK_RECENT_POSTS: PostSummary[] = [
-  { id: 1, title: '포트폴리오 3D 씬 최적화 기록', type: 'PROJECT', meta: '10-08' },
-  { id: 2, title: 'GSAP ScrollTrigger 함정 정리', type: 'LAB', meta: '10-05' },
-  { id: 3, title: '개발일지 #12 관리자 앱 시작', type: 'DEV_LOG', meta: '10-02' },
-];
 
 export const MOCK_STALE_DRAFTS: PostSummary[] = [
   { id: 1, title: 'React 19 use 훅 정리', type: 'DEV_LOG', meta: '42일 전' },

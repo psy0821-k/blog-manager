@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Link, MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { redirectToBlogLogin } from '@/lib/auth-redirect'
-import { saveToken } from '@/lib/auth-token'
+import { clearToken, saveToken } from '@/lib/auth-token'
 import { AppLayout } from '@/layouts/app-layout'
 import { RequireAuth } from '../require-auth'
 
@@ -91,6 +91,80 @@ describe('RequireAuth', () => {
 
     expect(screen.queryByText('관리 화면')).not.toBeInTheDocument()
     expect(mockedRedirect).toHaveBeenCalledWith('/manage')
+  })
+})
+
+describe('RequireAuth 토큰 만료 후 이동', () => {
+  beforeEach(() => {
+    sessionStorage.clear()
+    mockedRedirect.mockClear()
+    vi.useFakeTimers({ toFake: ['Date'] })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function renderNavigableGuard() {
+    return render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<RequireAuth />}>
+            <Route
+              element={
+                <div>
+                  <Link to="/manage?page=2">관리 이동</Link>
+                  <Outlet />
+                </div>
+              }
+            >
+              <Route path="/" element={<div>대시보드 화면</div>} />
+              <Route path="/manage" element={<div>관리 화면</div>} />
+            </Route>
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+  }
+
+  it('유효한 토큰으로 첫 렌더 후 토큰이 만료되고 다른 경로로 이동하면 아무것도 그리지 않고 이동한 경로로 redirectToBlogLogin을 호출해야 한다', async () => {
+    saveToken(createToken(3600))
+    const user = userEvent.setup()
+    const { container } = renderNavigableGuard()
+    expect(screen.getByText('대시보드 화면')).toBeInTheDocument()
+
+    vi.setSystemTime(Date.now() + 2 * 3600 * 1000)
+    await user.click(screen.getByText('관리 이동'))
+
+    expect(container).toBeEmptyDOMElement()
+    expect(mockedRedirect).toHaveBeenCalledTimes(1)
+    expect(mockedRedirect).toHaveBeenCalledWith('/manage?page=2')
+  })
+
+  it('토큰이 apiGet의 401로 지워진 뒤 이동하면 redirectToBlogLogin을 호출해야 한다', async () => {
+    saveToken(createToken(3600))
+    const user = userEvent.setup()
+    renderNavigableGuard()
+
+    // apiGet이 401을 받으면 하는 것과 같이 토큰을 지운다
+    clearToken()
+    await user.click(screen.getByText('관리 이동'))
+
+    expect(screen.queryByText('관리 화면')).not.toBeInTheDocument()
+    expect(mockedRedirect).toHaveBeenCalledWith('/manage?page=2')
+  })
+
+  it('만료 직전(30초 이내)인 토큰이 있는 상태로 이동하면 만료로 취급해 redirectToBlogLogin을 호출해야 한다', async () => {
+    saveToken(createToken(3600))
+    const user = userEvent.setup()
+    renderNavigableGuard()
+
+    // 남은 시간이 10초가 되도록 시계를 앞으로 돌린다
+    vi.setSystemTime(Date.now() + (3600 - 10) * 1000)
+    await user.click(screen.getByText('관리 이동'))
+
+    expect(screen.queryByText('관리 화면')).not.toBeInTheDocument()
+    expect(mockedRedirect).toHaveBeenCalledWith('/manage?page=2')
   })
 })
 

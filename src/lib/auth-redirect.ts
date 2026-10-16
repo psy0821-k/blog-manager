@@ -42,7 +42,21 @@ export function readTokenFromHash(hash: string): string | null {
   return token ? token : null
 }
 
+/** 로그인 흐름이 이미 시작됐는지. 페이지가 새로 로드되면 false로 돌아간다. */
+let isRedirecting = false
+
+/** 테스트 전용: 중복 방지 상태를 초기화한다. 앱 코드에서는 호출하지 않는다. */
+export function resetRedirectState(): void {
+  isRedirecting = false
+}
+
+/** 블로그 로그인으로 이동한다. 이미 시작됐다면 복귀 경로를 덮어쓰지 않고 아무것도 하지 않는다. */
 export function redirectToBlogLogin(returnPath: string): void {
+  if (isRedirecting) {
+    return
+  }
+
+  isRedirecting = true
   saveReturnPath(returnPath)
   window.location.assign(buildBlogLoginUrl(BLOG_LOGIN_URL, `${window.location.origin}/auth/callback`))
 }

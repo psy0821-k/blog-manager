@@ -3,13 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BLOG_LOGIN_URL } from '@/lib/env';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useCategories } from '../categories/use-categories';
 import { Pagination } from './pagination';
+import { getBlogOrigin } from './post-edit-url';
 import { PostTable } from './post-table';
 import { isPostType, POST_TYPE_LABELS, POST_TYPES } from './post-types';
 import { usePostList } from './use-post-list';
 
+/** 편집 링크의 블로그 오리진. 설정이 바뀌지 않으므로 모듈 로드 시 한 번만 구한다. */
+const BLOG_ORIGIN = getBlogOrigin(BLOG_LOGIN_URL);
 const DEFAULT_POST_TYPE = POST_TYPES[0];
 const SEARCH_DEBOUNCE_MS = 300;
 const ALL_CATEGORIES = 'all';
@@ -128,7 +132,7 @@ export function PostListPage() {
           <p className="text-sm">{EMPTY_MESSAGES[view]}</p>
         ) : (
           <>
-            <PostTable posts={state.data.data} />
+            <PostTable posts={state.data.data} type={type} blogOrigin={BLOG_ORIGIN} />
             <Pagination meta={state.data.meta} onPageChange={nextPage => updateParams({ page: String(nextPage) })} />
           </>
         ))}

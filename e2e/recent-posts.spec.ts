@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
+import { seedAuthToken } from './helpers/auth'
 
 const POSTS = {
   projects: { id: 'p1', title: '프로젝트 최신글' },
@@ -43,6 +44,7 @@ function recentPostsCard(page: Page) {
 }
 
 test('종류별 최신 글이 프로젝트, 랩, 개발일지 순서로 보인다', async ({ page }) => {
+  await seedAuthToken(page)
   await mockPostApis(page)
 
   await page.goto('/')
@@ -55,6 +57,7 @@ test('종류별 최신 글이 프로젝트, 랩, 개발일지 순서로 보인�
 })
 
 test('조회가 실패하면 에러를 보여 주고 다시 시도하면 복구된다', async ({ page }) => {
+  await seedAuthToken(page)
   let failRecent = true
   // 주차별 성실도(pageSize 50)는 정상으로 두고 최근 게시글(pageSize 1)의 랩 요청만 실패시킨다
   await mockPostApis(page, (endpoint, pageSize) => failRecent && endpoint === 'lab' && pageSize === 1)

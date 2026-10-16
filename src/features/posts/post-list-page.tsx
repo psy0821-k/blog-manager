@@ -13,6 +13,17 @@ import { usePostList } from './use-post-list';
 const DEFAULT_POST_TYPE = POST_TYPES[0];
 const SEARCH_DEBOUNCE_MS = 300;
 const ALL_CATEGORIES = 'all';
+const DRAFT_PARAM = 'draft';
+const DRAFT_PARAM_VALUE = 'true';
+
+type PostView = 'published' | 'draft';
+
+const POST_VIEW_LABELS: Record<PostView, string> = { published: '발행됨', draft: '임시저장' };
+const EMPTY_MESSAGES: Record<PostView, string> = {
+  published: '글이 없습니다.',
+  draft: '임시저장 글이 없습니다.',
+};
+const POST_VIEWS = Object.keys(POST_VIEW_LABELS) as PostView[];
 
 function parsePage(value: string | null): number {
   const page = Number(value);
@@ -27,10 +38,11 @@ export function PostListPage() {
   const q = searchParams.get('q') ?? '';
   const category = searchParams.get('category') ?? '';
   const page = parsePage(searchParams.get('page'));
+  const view: PostView = searchParams.get(DRAFT_PARAM) === DRAFT_PARAM_VALUE ? 'draft' : 'published';
 
   const debouncedQ = useDebouncedValue(q, SEARCH_DEBOUNCE_MS);
   const { state: categoriesState } = useCategories(type);
-  const { state, reload } = usePostList(type, page, debouncedQ, category);
+  const { state, reload } = usePostList(type, page, debouncedQ, category, view === 'draft');
 
   function updateParams(updates: Record<string, string | undefined>) {
     setSearchParams(
@@ -56,6 +68,19 @@ export function PostListPage() {
   return (
     <section className="mx-auto max-w-5xl space-y-4 p-6">
       <h1 className="text-xl font-semibold">컨텐츠 관리</h1>
+
+      <Tabs
+        value={view}
+        onValueChange={value => updateParams({ [DRAFT_PARAM]: value === 'draft' ? DRAFT_PARAM_VALUE : undefined, page: undefined })}
+      >
+        <TabsList>
+          {POST_VIEWS.map(postView => (
+            <TabsTrigger key={postView} value={postView}>
+              {POST_VIEW_LABELS[postView]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       <Tabs value={type} onValueChange={value => updateParams({ type: value, category: undefined, page: undefined })}>
         <TabsList>
@@ -100,7 +125,7 @@ export function PostListPage() {
 
       {state.status === 'success' &&
         (state.data.data.length === 0 ? (
-          <p className="text-sm">글이 없습니다.</p>
+          <p className="text-sm">{EMPTY_MESSAGES[view]}</p>
         ) : (
           <>
             <PostTable posts={state.data.data} />

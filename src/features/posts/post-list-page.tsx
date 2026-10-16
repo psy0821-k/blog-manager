@@ -10,6 +10,7 @@ import { Pagination } from './pagination';
 import { getBlogOrigin } from './post-edit-url';
 import { PostTable } from './post-table';
 import { isPostType, POST_TYPE_LABELS, POST_TYPES } from './post-types';
+import { usePostActions } from './use-post-actions';
 import { usePostList } from './use-post-list';
 
 /** 편집 링크의 블로그 오리진. 설정이 바뀌지 않으므로 모듈 로드 시 한 번만 구한다. */
@@ -27,6 +28,7 @@ const EMPTY_MESSAGES: Record<PostView, string> = {
   published: '글이 없습니다.',
   draft: '임시저장 글이 없습니다.',
 };
+const TOGGLE_LABELS: Record<PostView, string> = { published: '임시저장으로 전환', draft: '발행' };
 const POST_VIEWS = Object.keys(POST_VIEW_LABELS) as PostView[];
 
 function parsePage(value: string | null): number {
@@ -47,6 +49,7 @@ export function PostListPage() {
   const debouncedQ = useDebouncedValue(q, SEARCH_DEBOUNCE_MS);
   const { state: categoriesState } = useCategories(type);
   const { state, reload } = usePostList(type, page, debouncedQ, category, view === 'draft');
+  const { isPending, errorMessage, togglePublished } = usePostActions(reload);
 
   function updateParams(updates: Record<string, string | undefined>) {
     setSearchParams(
@@ -116,6 +119,12 @@ export function PostListPage() {
         </Select>
       </div>
 
+      {errorMessage && (
+        <p role="alert" className="text-sm text-destructive">
+          {errorMessage}
+        </p>
+      )}
+
       {state.status === 'loading' && <p className="text-sm">불러오는 중...</p>}
 
       {state.status === 'error' && (
@@ -132,7 +141,16 @@ export function PostListPage() {
           <p className="text-sm">{EMPTY_MESSAGES[view]}</p>
         ) : (
           <>
-            <PostTable posts={state.data.data} type={type} blogOrigin={BLOG_ORIGIN} />
+            <PostTable
+              posts={state.data.data}
+              type={type}
+              blogOrigin={BLOG_ORIGIN}
+              rowToggle={{
+                label: TOGGLE_LABELS[view],
+                isPending,
+                onToggle: post => void togglePublished(type, post, view === 'draft'),
+              }}
+            />
             <Pagination meta={state.data.meta} onPageChange={nextPage => updateParams({ page: String(nextPage) })} />
           </>
         ))}

@@ -105,3 +105,28 @@ test('유효한 토큰이면 /와 /manage를 오가도 블로그 로그인 주�
 
   expect(requests).toHaveLength(0)
 })
+
+test('토큰 없이 /dev-token에 접속하면 토큰 입력 화면 없이 블로그 로그인 주소로 이동한다', async ({ page }) => {
+  const requests = await mockBlogLogin(page, () => 'about:blank')
+
+  await page.goto('/dev-token', { waitUntil: 'commit' }).catch(() => {})
+  await expect.poll(() => requests.length).toBeGreaterThan(0)
+
+  const loginUrl = new URL(requests[0])
+  expect(`${loginUrl.origin}${loginUrl.pathname}`).toBe(BLOG_LOGIN_URL)
+  expect(loginUrl.searchParams.get('redirect')).toBe(CALLBACK_URL)
+  await expect(page.getByText('개발용 토큰')).toHaveCount(0)
+})
+
+test('토큰이 있고 /dev-token에 접속하면 토큰 입력 화면 대신 안내 문구가 보인다', async ({ page }) => {
+  const requests = await mockBlogLogin(page, () => 'about:blank')
+  await seedAuthToken(page)
+
+  await page.goto('/dev-token')
+
+  await expect(page.getByRole('heading', { name: '페이지를 찾을 수 없습니다' })).toBeVisible()
+  await expect(sideNav(page)).toBeVisible()
+  await expect(page.getByText('개발용 토큰')).toHaveCount(0)
+  await expect(page.getByRole('textbox')).toHaveCount(0)
+  expect(requests).toHaveLength(0)
+})

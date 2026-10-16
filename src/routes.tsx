@@ -1,8 +1,8 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { ComingSoonPage } from './components/coming-soon-page'
+import { NotFoundPage } from './components/not-found-page'
 import { DashboardPage } from './features/dashboard/dashboard-page'
 import { AuthCallbackPage } from './features/auth/auth-callback-page'
-import { DevTokenPage } from './features/auth/dev-token-page'
 import { LoginPage } from './features/auth/login-page'
 import { RequireAuth } from './features/auth/require-auth'
 import { PostListPage } from './features/posts/post-list-page'
@@ -22,10 +22,9 @@ export const router = createBrowserRouter([
           { path: '/reference', element: <ComingSoonPage title="사이트 모음" /> },
           { path: '/ideas', element: <ComingSoonPage title="글감 아이디어" /> },
           { path: '/manage', element: <PostListPage /> },
+          { path: '*', element: <NotFoundPage /> },
         ],
       },
     ],
   },
-  // 개발용 토큰 입력 화면은 개발 모드에서만 노출한다
-  ...(import.meta.env.DEV ? [{ path: '/dev-token', element: <DevTokenPage /> }] : []),
 ])

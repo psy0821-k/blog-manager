@@ -1,6 +1,6 @@
 import { PostListCard } from './post-list-card';
 import type { RecentPost } from './api/recent-posts-api';
-import { useRecentPosts } from './use-recent-posts';
+import { useRecentPosts } from './hooks/use-recent-posts';
 
 const monthDayFormatter = new Intl.DateTimeFormat('ko-KR', { month: '2-digit', day: '2-digit' });
 

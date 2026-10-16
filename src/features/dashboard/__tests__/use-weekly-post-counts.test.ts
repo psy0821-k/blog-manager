@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../../lib/api-client';
 import type { PostListItem } from '../../posts/post-types';
 import { fetchCountedPosts } from '../api/weekly-consistency-api';
-import { useWeeklyPostCounts } from '../use-weekly-post-counts';
+import { useWeeklyPostCounts } from '../hooks/use-weekly-post-counts';
 
 vi.mock('../api/weekly-consistency-api', () => ({ fetchCountedPosts: vi.fn() }));
 

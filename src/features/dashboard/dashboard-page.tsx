@@ -1,7 +1,7 @@
-import { MOCK_IDEAS, MOCK_STALE_DRAFTS, MOCK_TODOS } from './dashboard-mock';
+import { MOCK_IDEAS, MOCK_TODOS } from './dashboard-mock';
+import { DraftPostsSection } from './draft-posts-section';
 import { IdeaGeneratorCard } from './idea-generator-card';
 import { IdeaProgressCard } from './idea-progress-card';
-import { PostListCard } from './post-list-card';
 import { QuickLinksCard } from './quick-links-card';
 import { RecentPostsSection } from './recent-posts-section';
 import { TodoSummaryCard } from './todo-summary-card';
@@ -19,13 +19,7 @@ export function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <WeeklyConsistencySection />
           <RecentPostsSection />
-          <PostListCard
-            title="임시 저장 게시물"
-            description="수정한 지 오래된 순"
-            posts={MOCK_STALE_DRAFTS}
-            emptyText="방치된 임시저장 글이 없어요."
-            moreHref="/manage"
-          />
+          <DraftPostsSection />
         </div>
       </div>
 

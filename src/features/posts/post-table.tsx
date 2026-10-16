@@ -5,12 +5,23 @@ import { buildPostEditUrl } from './post-edit-url'
 import { POST_STATUS_LABELS } from './post-types'
 import type { PostListItem, PostType } from './post-types'
 
+const PENDING_LABEL = '처리 중…'
+
+interface PostRowToggle {
+  /** 버튼 문구. 보기마다 다르다(발행됨 보기: '임시저장으로 전환', 임시저장 보기: '발행'). */
+  label: string
+  isPending: (id: string) => boolean
+  onToggle: (post: PostListItem) => void
+}
+
 interface PostTableProps {
   posts: PostListItem[]
   /** 글 종류. 편집 링크의 경로를 정한다. */
   type: PostType
   /** 블로그 오리진. null이면 편집 링크 열을 그리지 않는다. */
   blogOrigin: string | null
+  /** 없으면 상태 변경 열을 그리지 않는다. */
+  rowToggle?: PostRowToggle
 }
 
 function formatDate(isoDate: string): string {
@@ -22,7 +33,7 @@ function formatTitle({ title, devNumber }: PostListItem): string {
   return devNumber ? `#${devNumber} ${title}` : title
 }
 
-export function PostTable({ posts, type, blogOrigin }: PostTableProps) {
+export function PostTable({ posts, type, blogOrigin, rowToggle }: PostTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -33,6 +44,7 @@ export function PostTable({ posts, type, blogOrigin }: PostTableProps) {
           <TableHead>작성일</TableHead>
           <TableHead>수정일</TableHead>
           {blogOrigin !== null && <TableHead>편집</TableHead>}
+          {rowToggle && <TableHead>상태 변경</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -51,6 +63,18 @@ export function PostTable({ posts, type, blogOrigin }: PostTableProps) {
                   <a href={buildPostEditUrl(type, post.slug, blogOrigin)} target="_blank" rel="noopener noreferrer">
                     편집
                   </a>
+                </Button>
+              </TableCell>
+            )}
+            {rowToggle && (
+              <TableCell>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={rowToggle.isPending(post.id)}
+                  onClick={() => rowToggle.onToggle(post)}
+                >
+                  {rowToggle.isPending(post.id) ? PENDING_LABEL : rowToggle.label}
                 </Button>
               </TableCell>
             )}

@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
 import { PostTable } from '../post-table'
 import type { PostListItem, PostType } from '../post-types'
 
@@ -19,6 +20,69 @@ function editLinkOfRow(title: string): HTMLElement {
   if (!row) throw new Error('행을 찾을 수 없다')
   return within(row).getByRole('link', { name: '편집' })
 }
+
+const PENDING_LABEL = '처리 중…'
+
+function renderToggleTable(posts: PostListItem[], isPending: (id: string) => boolean = () => false, label = '발행') {
+  const onToggle = vi.fn()
+
+  render(<PostTable posts={posts} type="PROJECT" blogOrigin={ORIGIN} rowToggle={{ label, isPending, onToggle }} />)
+
+  return onToggle
+}
+
+function rowOf(title: string): HTMLElement {
+  const row = screen.getByText(title).closest('tr')
+  if (!row) throw new Error('행을 찾을 수 없다')
+  return row
+}
+
+describe('PostTable 상태 변경 열', () => {
+  describe('정상', () => {
+    it('rowToggle을 넘기면 헤더 상태 변경과 행마다 label 버튼이 보이고 클릭하면 그 행의 글로 onToggle이 한 번 호출돼야 한다', async () => {
+      const user = userEvent.setup()
+      const first = makeItem('first')
+      const second = makeItem('second')
+      const onToggle = renderToggleTable([first, second])
+
+      expect(screen.getByRole('columnheader', { name: '상태 변경' })).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: '발행' })).toHaveLength(2)
+
+      await user.click(within(rowOf('second 제목')).getByRole('button', { name: '발행' }))
+
+      expect(onToggle).toHaveBeenCalledTimes(1)
+      expect(onToggle).toHaveBeenCalledWith(second)
+    })
+
+    it('isPending(id)가 true인 행은 버튼 문구가 처리 중…이고 disabled여야 한다', () => {
+      renderToggleTable([makeItem('first')], () => true)
+
+      const button = within(rowOf('first 제목')).getByRole('button', { name: PENDING_LABEL })
+
+      expect(button).toBeDisabled()
+      expect(screen.queryByRole('button', { name: '발행' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('경계', () => {
+    it('rowToggle을 넘기지 않으면 상태 변경 헤더와 전환 버튼이 없고 기존 열은 그대로여야 한다', () => {
+      renderTable([makeItem('first')])
+
+      expect(screen.queryByRole('columnheader', { name: '상태 변경' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      for (const name of ['제목', '상태', '조회수', '작성일', '수정일', '편집']) {
+        expect(screen.getByRole('columnheader', { name })).toBeInTheDocument()
+      }
+    })
+
+    it('한 행만 isPending이 true일 때 다른 행 버튼은 label 문구로 활성 상태여야 한다', () => {
+      renderToggleTable([makeItem('first'), makeItem('second')], (id) => id === 'first', '임시저장으로 전환')
+
+      expect(within(rowOf('first 제목')).getByRole('button', { name: PENDING_LABEL })).toBeDisabled()
+      expect(within(rowOf('second 제목')).getByRole('button', { name: '임시저장으로 전환' })).toBeEnabled()
+    })
+  })
+})
 
 describe('PostTable 편집 링크', () => {
   describe('정상', () => {

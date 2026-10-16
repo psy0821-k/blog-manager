@@ -35,7 +35,7 @@ feature의 *-api.ts  →  use-*.ts 훅(useFetch + useCallback)  →  페이지/�
 src/lib/api-client.ts의 apiGet  →  fetch
 ```
 
-- `apiGet`(`src/lib/api-client.ts`)은 GET만 지원한다. 쿼리를 만들고, 세션 토큰이 있으면 `Authorization: Bearer`를 붙이며, 실패하면 `ApiError(status)`를 던진다. 401/403이면 저장된 토큰을 지운다.
+- `apiGet`·`apiPatch`·`apiDelete`(`src/lib/api-client.ts`)는 하나의 내부 요청 함수(`request`)를 공유한다. 쿼리를 만들고, 세션 토큰이 있으면 `Authorization: Bearer`를 붙이며, 실패하면 `ApiError(status)`를 던지고, 204처럼 본문이 없는 응답은 `undefined`로 돌려준다. 401/403이면 저장된 토큰을 지우고 재로그인한다(아래 "인증과 로그인 흐름"). 쓰기(PATCH·DELETE)도 읽기와 같은 인증·재로그인 규칙을 탄다.
 - 토큰은 `sessionStorage`에 JWT로 저장한다(`src/lib/auth-token.ts`). 만료 30초 전부터 만료로 취급한다. 토큰은 블로그 로그인 후 `/auth/callback`이 저장한다(아래 "인증과 로그인 흐름").
 - `useFetch(fetcher)`(`src/lib/use-fetch.ts`)는 `loading | success | error` 상태와 `reload`를 준다. **fetcher의 참조가 바뀌면 다시 요청하므로 호출부에서 `useCallback`으로 감싸야 한다.**
 - 같은 훅 형태를 `src/features/posts/use-post-list.ts`, `categories/use-categories.ts`, `dashboard/hooks/use-weekly-post-counts.ts`가 쓴다.
@@ -45,10 +45,20 @@ src/lib/api-client.ts의 apiGet  →  fetch
 - 글 목록은 종류별 엔드포인트로 나뉜다: 프로젝트, 랩, 개발일지(`posts-api.ts`의 `POST_LIST_PATHS`). 응답은 `{ data, meta }`.
 - `draft=true`가 없으면 **발행된 글만** 돌려준다. `draft=true`는 관리자 토큰이 필요하다.
 - `pageSize` 상한은 50이고 기본 정렬은 `createdAt` 내림차순이다(개발일지는 `devNumber` 내림차순). 발행일 필드가 없어 `createdAt`을 발행 시점으로 쓴다.
+- 글 단건 쓰기는 종류별 `/api/<projects|lab|devlog>/<slug>`다. `PATCH`는 본문 `{ published: boolean }`으로 발행 ↔ 임시저장을 바꾸고, `DELETE`는 성공하면 204(본문 없음)를 준다. 없거나 종류가 다른 글은 404다. 모두 관리자 토큰이 필요하다. 랩의 쓰기 API가 쿠키 세션만 받던 것을 토큰도 받게 하는 블로그 변경이 배포돼야 랩 글을 전환·삭제할 수 있다.
+- 블로그 slug는 글자·숫자·하이픈만 허용한다. 경로에 넣을 때는 `encodeURIComponent`를 쓴다.
+- 개발일지 번호(`devNumber`)는 처음 발행할 때 붙고, 임시저장으로 되돌렸다 다시 발행해도 유지된다.
 
 ### 라우팅과 화면
 
 `src/routes.tsx`의 `createBrowserRouter`에서 `AppLayout`(사이드바 + `Outlet`) 아래에 페이지가 놓인다. 구현된 화면은 대시보드(`/`)와 컨텐츠 관리(`/manage`)뿐이고, `/todo`, `/reference`, `/ideas`는 `ComingSoonPage`다.
+
+### 컨텐츠 관리 (`/manage`)
+
+- 종류 탭(프로젝트·랩·개발일지)과 `발행됨 | 임시저장` 보기 전환이 있다. URL이 단일 출처이고 `?draft=true`가 임시저장 보기다. 보기·종류 탭·검색·카테고리를 바꾸면 페이지는 1쪽으로 돌아간다.
+- 행 버튼: `편집`(블로그 편집 화면을 새 탭으로 연다), 전환(`임시저장으로 전환`/`발행`, `PATCH { published }`), `삭제`(확인 대화상자 `confirm-delete-dialog.tsx`를 거친다). 편집 링크 주소는 `post-edit-url.ts`가 `VITE_BLOG_LOGIN_URL`의 오리진 + `/projects|lab|devlog/<slug>/edit`로 만들고, 주소를 알 수 없으면 편집 열을 숨긴다(새 환경변수는 없다).
+- 전환·삭제의 처리 상태는 `usePostActions`(`use-post-actions.ts`)가 글 id별로 관리한다. 같은 글이 처리 중이면 전환·삭제 모두 무시한다. 성공하면 목록을 다시 불러오고, 실패는 표 위에 오류 문구로 보인다(404는 "이미 삭제된 글입니다"). 낙관적 업데이트와 토스트는 쓰지 않는다.
+- **삭제 대상은 대화상자를 연 시점의 `{ type, post }`로 저장한다**(`post-list-page.tsx`의 `deleteTarget`). 확정할 때 현재 URL의 종류를 다시 읽으면, 대화상자가 열린 채 브라우저 뒤로 가기로 종류가 바뀌었을 때 다른 종류의 글이 삭제될 수 있다. 그래서 확정은 항상 저장된 값으로 한다. 2쪽 이상의 마지막 글을 지우면 이전 페이지로 이동하되, 삭제 대상이 현재 목록에 있고 유일한 항목일 때만 한다.
 
 ### 인증과 로그인 흐름
 
@@ -86,6 +96,10 @@ src/lib/api-client.ts의 apiGet  →  fetch
 - HTTP 경계인 `fetchPostList`만 `vi.mock`으로 대체하고 훅·집계·화면은 실제로 연결하는 통합 테스트를 쓴다(`weekly-consistency.integration.test.tsx`).
 - 날짜에 의존하는 테스트는 `vi.useFakeTimers({ toFake: ['Date'] })`로 `Date`만 고정한다. 전체 타이머를 대체하면 Promise와 `userEvent`가 멈춘다.
 - 막대 높이는 `data-testid="week-bar-{주차}"`의 `style.height`(%)로 검증한다.
+- 응답을 흉내 낼 때 `fetchMock.mockResolvedValue(new Response(...))`는 `Response` 하나를 만들어 같은 호출에 계속 재사용한다. 본문은 한 번만 읽을 수 있어 두 번째 호출이 실패하니, 여러 번 호출되는 테스트는 `mockImplementation(async () => new Response(...))`로 호출마다 새로 만든다(204는 `new Response(null, { status: 204 })`).
+- 사이드바를 렌더하는 테스트에는 `matchMedia` stub과 `TooltipProvider`(`App.tsx`가 감싸는 것과 같게)가 필요하다. Radix Dialog·Select·Tabs는 포털 렌더, `pointer-events`, `ResizeObserver` 등 jsdom 제약이 있어 필요한 stub을 테스트 파일 안에서 둔다.
+- E2E(`e2e/`)는 가드 때문에 `e2e/helpers/auth.ts`의 `seedAuthToken`으로 토큰을 먼저 심고, 블로그 API는 `page.route`로 mock한다. `playwright.config.ts`가 `webServer.env`로 더미 `VITE_BLOG_LOGIN_URL`(로컬 더미 주소)을 넣는다. `reuseExistingServer: true`라서 5173에 개발 서버가 떠 있으면 그 서버를 재사용해 더미 주소가 적용되지 않으므로, **E2E를 돌리기 전에 개발 서버를 종료한다.**
+- `page.route`는 나중에 등록한 것이 먼저 실행된다. 뒤에 등록한 route가 `fallback()` 없이 `fulfill`하면 앞 route의 요청 기록이 누락되니, 요청 수를 단언할 때는 응답하는 route 안에서 센다.
 
 ## 문서와 커밋
 

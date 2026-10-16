@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useWeeklyPostCounts } from './use-weekly-post-counts';
+import { useWeeklyPostCounts } from './hooks/use-weekly-post-counts';
 import { WeeklyConsistencyCard } from './weekly-consistency-card';
 import { WeeklyConsistencyError } from './weekly-consistency-error';
 import { WeeklyConsistencyLoading } from './weekly-consistency-loading';

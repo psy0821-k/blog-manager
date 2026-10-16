@@ -40,12 +40,6 @@ export interface ChatMessage {
   suggestions?: IdeaSuggestion[];
 }
 
-export const MOCK_STALE_DRAFTS: PostSummary[] = [
-  { id: 1, title: 'React 19 use 훅 정리', type: 'DEV_LOG', meta: '42일 전' },
-  { id: 2, title: '셰이더 후처리 패스 실험', type: 'LAB', meta: '27일 전' },
-  { id: 3, title: 'Neon + Prisma 연동 메모', type: 'DEV_LOG', meta: '14일 전' },
-];
-
 export const MOCK_TODOS: TodoSummaryItem[] = [
   { id: 1, title: '대시보드 퍼블리싱', dueLabel: '오늘', done: true },
   { id: 2, title: '백엔드 뼈대 구성', dueLabel: '내일', done: false },

@@ -1,5 +1,5 @@
-import { fetchPostList } from '../posts/posts-api';
-import type { PostListItem, PostType } from '../posts/post-types';
+import { fetchPostList } from '../../posts/posts-api';
+import type { PostListItem, PostType } from '../../posts/post-types';
 
 /** 집계 대상 종류. 개발일지(DEV_LOG)는 제외한다. */
 export const COUNTED_POST_TYPES: readonly PostType[] = ['PROJECT', 'LAB'];

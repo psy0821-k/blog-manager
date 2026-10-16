@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../../lib/api-client';
-import { fetchPostList } from '../posts/posts-api';
-import type { PostListItem, PostListResponse, PostType } from '../posts/post-types';
-import { COUNTED_POST_TYPES, fetchCountedPosts } from './weekly-consistency-api';
+import { ApiError } from '../../../lib/api-client';
+import { fetchPostList } from '../../posts/posts-api';
+import type { PostListItem, PostListResponse, PostType } from '../../posts/post-types';
+import { COUNTED_POST_TYPES, fetchCountedPosts } from '../api/weekly-consistency-api';
 
-vi.mock('../posts/posts-api', () => ({ fetchPostList: vi.fn() }));
+vi.mock('../../posts/posts-api', () => ({ fetchPostList: vi.fn() }));
 
 const mockedFetchPostList = vi.mocked(fetchPostList);
 

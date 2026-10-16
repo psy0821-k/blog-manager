@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateWeeklyPostCounts, formatMonthLabel, getWeekOfMonth } from './weekly-post-counts';
+import {
+  aggregateWeeklyPostCounts,
+  formatMonthLabel,
+  getWeekOfMonth,
+  summarizeWeeklyPostCounts,
+} from '../weekly-post-counts';
 
 /** 로컬 시간 기준 날짜로 createdAt(ISO 문자열)을 가진 글 하나를 만든다. */
 function makePost(year: number, month: number, day: number, hour = 12, minute = 0, second = 0) {
@@ -139,5 +144,52 @@ describe('aggregateWeeklyPostCounts', () => {
     aggregateWeeklyPostCounts(posts, now);
 
     expect(posts).toEqual(snapshot);
+  });
+});
+
+describe('summarizeWeeklyPostCounts', () => {
+  it('총 편수는 모든 주차 count의 합이어야 한다', () => {
+    const summary = summarizeWeeklyPostCounts([
+      { week: 1, count: 3, isFuture: false },
+      { week: 2, count: 1, isFuture: false },
+      { week: 3, count: 0, isFuture: true },
+    ]);
+
+    expect(summary.totalCount).toBe(4);
+  });
+
+  it('글 올린 주 수는 이미 시작된 주차 중 count가 1 이상인 주차의 개수여야 한다', () => {
+    const summary = summarizeWeeklyPostCounts([
+      { week: 1, count: 3, isFuture: false },
+      { week: 2, count: 0, isFuture: false },
+      { week: 3, count: 1, isFuture: false },
+      { week: 4, count: 0, isFuture: true },
+    ]);
+
+    expect(summary.activeWeekCount).toBe(2);
+  });
+
+  it('시작된 주 수는 지나지 않은 주차를 뺀 주차의 개수여야 한다', () => {
+    const summary = summarizeWeeklyPostCounts([
+      { week: 1, count: 3, isFuture: false },
+      { week: 2, count: 1, isFuture: false },
+      { week: 3, count: 0, isFuture: true },
+      { week: 4, count: 0, isFuture: true },
+    ]);
+
+    expect(summary.startedWeekCount).toBe(2);
+  });
+
+  it('주차가 비어 있으면 모든 값이 0이어야 한다', () => {
+    expect(summarizeWeeklyPostCounts([])).toEqual({ totalCount: 0, activeWeekCount: 0, startedWeekCount: 0 });
+  });
+
+  it('지나지 않은 주차의 글은 글 올린 주 수에 포함하지 않아야 한다', () => {
+    const summary = summarizeWeeklyPostCounts([
+      { week: 1, count: 0, isFuture: false },
+      { week: 2, count: 2, isFuture: true },
+    ]);
+
+    expect(summary.activeWeekCount).toBe(0);
   });
 });

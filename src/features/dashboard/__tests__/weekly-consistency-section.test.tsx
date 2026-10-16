@@ -1,13 +1,13 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '../../lib/api-client';
-import type { FetchState } from '../../lib/use-fetch';
-import { useWeeklyPostCounts } from './use-weekly-post-counts';
-import { WeeklyConsistencySection } from './weekly-consistency-section';
-import type { WeeklyPostCount } from './weekly-post-counts';
+import { ApiError } from '../../../lib/api-client';
+import type { FetchState } from '../../../lib/use-fetch';
+import { useWeeklyPostCounts } from '../hooks/use-weekly-post-counts';
+import { WeeklyConsistencySection } from '../weekly-consistency-section';
+import type { WeeklyPostCount } from '../weekly-post-counts';
 
-vi.mock('./use-weekly-post-counts', () => ({ useWeeklyPostCounts: vi.fn() }));
+vi.mock('../hooks/use-weekly-post-counts', () => ({ useWeeklyPostCounts: vi.fn() }));
 
 const mockedUseWeeklyPostCounts = vi.mocked(useWeeklyPostCounts);
 

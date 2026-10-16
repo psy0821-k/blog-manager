@@ -18,9 +18,10 @@ import { NavMenuItem } from './nav-menu-item';
 
 interface SideNavProps {
   user: string | null;
+  onLogout: () => void;
 }
 
-const SideNav = ({ user }: SideNavProps) => {
+const SideNav = ({ user, onLogout }: SideNavProps) => {
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
@@ -56,7 +57,10 @@ const SideNav = ({ user }: SideNavProps) => {
 
           {user ? (
             <div>
-              {user} 님 반갑습니다 <a href="">로그아웃</a>
+              {user} 님 반갑습니다{' '}
+              <button type="button" className="underline" onClick={onLogout}>
+                로그아웃
+              </button>
             </div>
           ) : (
             <Link className="border rounded-2xl px-2 py-1 hover:bg-black hover:text-white" to="/login">

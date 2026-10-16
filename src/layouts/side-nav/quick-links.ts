@@ -1,4 +1,4 @@
-import { Bot, GitBranch, type LucideIcon, Play, Sparkles, Triangle } from 'lucide-react';
+import { Book, Bot, GitBranch, LampDesk, type LucideIcon, Play, Sparkles, Triangle } from 'lucide-react';
 
 export interface QuickLink {
   url: string;
@@ -13,4 +13,5 @@ export const QUICK_LINKS: QuickLink[] = [
   { url: 'https://gemini.google.com', label: 'Gemini', icon: Sparkles },
   { url: 'https://github.com', label: 'GitHub', icon: GitBranch },
   { url: 'https://vercel.com', label: 'Vercel', icon: Triangle },
+  { url: 'https://blog-project-mu-six.vercel.app/', label: '블로그', icon: LampDesk },
 ];

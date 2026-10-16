@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,9 +7,11 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BLOG_LOGIN_URL } from '@/lib/env';
 import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { useCategories } from '../categories/use-categories';
+import { ConfirmDeleteDialog } from './confirm-delete-dialog';
 import { Pagination } from './pagination';
 import { getBlogOrigin } from './post-edit-url';
 import { PostTable } from './post-table';
+import type { PostListItem, PostType } from './post-types';
 import { isPostType, POST_TYPE_LABELS, POST_TYPES } from './post-types';
 import { usePostActions } from './use-post-actions';
 import { usePostList } from './use-post-list';
@@ -31,6 +34,12 @@ const EMPTY_MESSAGES: Record<PostView, string> = {
 const TOGGLE_LABELS: Record<PostView, string> = { published: '임시저장으로 전환', draft: '발행' };
 const POST_VIEWS = Object.keys(POST_VIEW_LABELS) as PostView[];
 
+/** 삭제 대화상자를 연 시점의 글 종류와 대상 글. URL이 바뀌어도 처음 연 글을 가리킨다. */
+interface DeleteTarget {
+  type: PostType;
+  post: PostListItem;
+}
+
 function parsePage(value: string | null): number {
   const page = Number(value);
   return Number.isInteger(page) && page > 0 ? page : 1;
@@ -49,7 +58,8 @@ export function PostListPage() {
   const debouncedQ = useDebouncedValue(q, SEARCH_DEBOUNCE_MS);
   const { state: categoriesState } = useCategories(type);
   const { state, reload } = usePostList(type, page, debouncedQ, category, view === 'draft');
-  const { isPending, errorMessage, togglePublished } = usePostActions(reload);
+  const { isPending, errorMessage, togglePublished, remove } = usePostActions(reload);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   function updateParams(updates: Record<string, string | undefined>) {
     setSearchParams(
@@ -68,6 +78,25 @@ export function PostListPage() {
       },
       { replace: true }
     );
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+
+    // 대상이 현재 목록에 있고 그 글이 현재 페이지의 유일한 항목이며 2쪽 이상일 때만 이전 페이지로 이동한다
+    // (page 쿼리 변경이 재조회를 일으킨다). 대상이 현재 목록에 없으면 이동하지 않고 재조회만 한다.
+    const isLastOnPage =
+      page > 1 &&
+      state.status === 'success' &&
+      state.data.data.length === 1 &&
+      state.data.data[0].id === deleteTarget.post.id;
+    const handled = await remove(
+      deleteTarget.type, // 현재 URL의 type이 아니라 대화상자를 연 시점의 type
+      deleteTarget.post,
+      isLastOnPage ? () => updateParams({ page: String(page - 1) }) : undefined
+    );
+
+    if (handled) setDeleteTarget(null);
   }
 
   const categories = categoriesState.status === 'success' ? categoriesState.data : [];
@@ -150,10 +179,18 @@ export function PostListPage() {
                 isPending,
                 onToggle: post => void togglePublished(type, post, view === 'draft'),
               }}
+              rowDelete={{ isPending, onDelete: post => setDeleteTarget({ type, post }) }}
             />
             <Pagination meta={state.data.meta} onPageChange={nextPage => updateParams({ page: String(nextPage) })} />
           </>
         ))}
+
+      <ConfirmDeleteDialog
+        title={deleteTarget?.post.title ?? null}
+        isPending={deleteTarget !== null && isPending(deleteTarget.post.id)}
+        onConfirm={() => void confirmDelete()}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </section>
   );
 }

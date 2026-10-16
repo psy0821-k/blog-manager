@@ -14,6 +14,11 @@ interface PostRowToggle {
   onToggle: (post: PostListItem) => void
 }
 
+interface PostRowDelete {
+  isPending: (id: string) => boolean
+  onDelete: (post: PostListItem) => void
+}
+
 interface PostTableProps {
   posts: PostListItem[]
   /** 글 종류. 편집 링크의 경로를 정한다. */
@@ -22,6 +27,8 @@ interface PostTableProps {
   blogOrigin: string | null
   /** 없으면 상태 변경 열을 그리지 않는다. */
   rowToggle?: PostRowToggle
+  /** 없으면 삭제 열을 그리지 않는다. */
+  rowDelete?: PostRowDelete
 }
 
 function formatDate(isoDate: string): string {
@@ -33,7 +40,7 @@ function formatTitle({ title, devNumber }: PostListItem): string {
   return devNumber ? `#${devNumber} ${title}` : title
 }
 
-export function PostTable({ posts, type, blogOrigin, rowToggle }: PostTableProps) {
+export function PostTable({ posts, type, blogOrigin, rowToggle, rowDelete }: PostTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -45,6 +52,7 @@ export function PostTable({ posts, type, blogOrigin, rowToggle }: PostTableProps
           <TableHead>수정일</TableHead>
           {blogOrigin !== null && <TableHead>편집</TableHead>}
           {rowToggle && <TableHead>상태 변경</TableHead>}
+          {rowDelete && <TableHead>삭제</TableHead>}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -75,6 +83,18 @@ export function PostTable({ posts, type, blogOrigin, rowToggle }: PostTableProps
                   onClick={() => rowToggle.onToggle(post)}
                 >
                   {rowToggle.isPending(post.id) ? PENDING_LABEL : rowToggle.label}
+                </Button>
+              </TableCell>
+            )}
+            {rowDelete && (
+              <TableCell>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={rowDelete.isPending(post.id)}
+                  onClick={() => rowDelete.onDelete(post)}
+                >
+                  삭제
                 </Button>
               </TableCell>
             )}

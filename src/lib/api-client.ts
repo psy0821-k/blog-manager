@@ -46,7 +46,7 @@ export interface ApiWriteOptions {
   signal?: AbortSignal
 }
 
-/** apiGet/apiPatch가 공유하는 요청 코어. 본문 없는 응답(204 등)은 undefined로 반환한다. */
+/** apiGet/apiPatch/apiDelete가 공유하는 요청 코어. 본문 없는 응답(204 등)은 undefined로 반환한다. */
 async function request<T>(path: string, { method, query, body, signal }: RequestOptions): Promise<T> {
   const token = getToken()
   // 재로그인 후 돌아올 경로는 요청을 보낸 시점의 화면 경로로 잡는다
@@ -88,6 +88,11 @@ async function request<T>(path: string, { method, query, body, signal }: Request
 /** 토큰이 있으면 Bearer 헤더로 실어 GET 요청하고 JSON을 반환한다. */
 export function apiGet<T>(path: string, options: ApiGetOptions = {}): Promise<T> {
   return request<T>(path, { method: 'GET', ...options })
+}
+
+/** 토큰을 Bearer로 실어 DELETE 요청한다. 성공(204 등 본문 없음)이면 undefined로 resolve한다. */
+export function apiDelete(path: string, options: ApiWriteOptions = {}): Promise<void> {
+  return request<void>(path, { method: 'DELETE', signal: options.signal })
 }
 
 /** 토큰을 Bearer로 실어 PATCH 요청하고 JSON(없으면 undefined)을 반환한다. */

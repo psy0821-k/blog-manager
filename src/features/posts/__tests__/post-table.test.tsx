@@ -155,3 +155,55 @@ describe('PostTable 편집 링크', () => {
     })
   })
 })
+
+function renderDeleteTable(posts: PostListItem[], isPending: (id: string) => boolean = () => false) {
+  const onDelete = vi.fn()
+
+  render(<PostTable posts={posts} type="PROJECT" blogOrigin={ORIGIN} rowDelete={{ isPending, onDelete }} />)
+
+  return onDelete
+}
+
+describe('PostTable 삭제 열', () => {
+  describe('정상', () => {
+    it('rowDelete를 넘기면 헤더 삭제와 행마다 삭제 버튼이 보이고 클릭하면 그 행의 글로 onDelete가 한 번 호출돼야 한다', async () => {
+      const user = userEvent.setup()
+      const first = makeItem('first')
+      const second = makeItem('second')
+      const onDelete = renderDeleteTable([first, second])
+
+      expect(screen.getByRole('columnheader', { name: '삭제' })).toBeInTheDocument()
+      expect(screen.getAllByRole('button', { name: '삭제' })).toHaveLength(2)
+
+      await user.click(within(rowOf('second 제목')).getByRole('button', { name: '삭제' }))
+
+      expect(onDelete).toHaveBeenCalledTimes(1)
+      expect(onDelete).toHaveBeenCalledWith(second)
+    })
+
+    it('isPending(id)가 true인 행의 삭제 버튼은 disabled여야 한다', () => {
+      renderDeleteTable([makeItem('first')], () => true)
+
+      expect(within(rowOf('first 제목')).getByRole('button', { name: '삭제' })).toBeDisabled()
+    })
+  })
+
+  describe('경계', () => {
+    it('rowDelete를 넘기지 않으면 삭제 헤더와 버튼이 없고 기존 열은 그대로여야 한다', () => {
+      renderTable([makeItem('first')])
+
+      expect(screen.queryByRole('columnheader', { name: '삭제' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: '삭제' })).not.toBeInTheDocument()
+      for (const name of ['제목', '상태', '조회수', '작성일', '수정일', '편집']) {
+        expect(screen.getByRole('columnheader', { name })).toBeInTheDocument()
+      }
+    })
+
+    it('한 행만 isPending이 true일 때 다른 행의 삭제 버튼은 활성이어야 한다', () => {
+      renderDeleteTable([makeItem('first'), makeItem('second')], (id) => id === 'first')
+
+      expect(within(rowOf('first 제목')).getByRole('button', { name: '삭제' })).toBeDisabled()
+      expect(within(rowOf('second 제목')).getByRole('button', { name: '삭제' })).toBeEnabled()
+    })
+  })
+})

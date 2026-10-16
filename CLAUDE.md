@@ -18,6 +18,7 @@ npm run test:e2e   # playwright test (e2e/ 폴더, 개발 서버를 자동으로
 
 - `BLOG_API_PROXY_TARGET`: 개발 서버가 `/api`를 중계할 블로그 주소. 서버 전용이며 `VITE_` 접두사가 없다. **`.env`를 바꾼 뒤에는 개발 서버를 재시작해야 읽힌다.**
 - `VITE_BLOG_API_URL`: 배포용 API 주소. **개발 중에는 비워 둔다.** 값이 있으면 프록시를 거치지 않고 브라우저가 직접 호출해 블로그 쪽 CORS에 막힌다.
+- `VITE_BLOG_LOGIN_URL`: 블로그 `/admin-login` 주소. 끝 슬래시는 없어야 한다(`src/lib/env.ts`의 `trimTrailingSlash`가 제거한다). 값은 문서에 쓰지 않는다.
 - `.env`는 열거나 수정하지 않는다(사용자가 허용한 경우만). 값 확인이 필요하면 키 이름과 형식만 점검한다.
 
 ## 아키텍처
@@ -35,7 +36,7 @@ src/lib/api-client.ts의 apiGet  →  fetch
 ```
 
 - `apiGet`(`src/lib/api-client.ts`)은 GET만 지원한다. 쿼리를 만들고, 세션 토큰이 있으면 `Authorization: Bearer`를 붙이며, 실패하면 `ApiError(status)`를 던진다. 401/403이면 저장된 토큰을 지운다.
-- 토큰은 `sessionStorage`에 JWT로 저장한다(`src/lib/auth-token.ts`). 만료 30초 전부터 만료로 취급한다. 개발 중에는 `/dev-token`(DEV 모드 전용 라우트)에 블로그가 발급한 토큰을 붙여 넣는다.
+- 토큰은 `sessionStorage`에 JWT로 저장한다(`src/lib/auth-token.ts`). 만료 30초 전부터 만료로 취급한다. 토큰은 블로그 로그인 후 `/auth/callback`이 저장한다(아래 "인증과 로그인 흐름").
 - `useFetch(fetcher)`(`src/lib/use-fetch.ts`)는 `loading | success | error` 상태와 `reload`를 준다. **fetcher의 참조가 바뀌면 다시 요청하므로 호출부에서 `useCallback`으로 감싸야 한다.**
 - 같은 훅 형태를 `src/features/posts/use-post-list.ts`, `categories/use-categories.ts`, `dashboard/hooks/use-weekly-post-counts.ts`가 쓴다.
 
@@ -48,6 +49,15 @@ src/lib/api-client.ts의 apiGet  →  fetch
 ### 라우팅과 화면
 
 `src/routes.tsx`의 `createBrowserRouter`에서 `AppLayout`(사이드바 + `Outlet`) 아래에 페이지가 놓인다. 구현된 화면은 대시보드(`/`)와 컨텐츠 관리(`/manage`)뿐이고, `/todo`, `/reference`, `/ideas`는 `ComingSoonPage`다.
+
+### 인증과 로그인 흐름
+
+- `/login`과 `/auth/callback`은 가드 밖 최상위 라우트이고, 나머지는 모두 `RequireAuth` 아래에 있다. `RequireAuth`는 토큰이 없으면 아무것도 그리지 않고 블로그 `/admin-login`(`VITE_BLOG_LOGIN_URL`)으로 보낸다.
+- 가드 안의 catch-all(`*`)이 미등록 경로를 `NotFoundPage`로 처리한다. 그래서 미등록 경로도 토큰이 없으면 로그인으로 가고, 있으면 사이드바 안에 안내 화면이 나온다.
+- `/auth/callback`은 URL 해시 `#token=`에서 토큰을 읽어 `sessionStorage`에 저장하고 복귀 경로로 이동한다.
+- 복귀 경로는 로그인으로 보내기 전에 `sessionStorage`에 저장하며 앱 내부 경로만 허용한다.
+- `apiGet`이 401/403을 받으면 토큰을 지우고 자동으로 재로그인한다. 재로그인 직후 짧은 시간 안에 다시 거부되면 이동하지 않고 오류만 남겨 루프를 끊는다.
+- 로그아웃은 블로그 `/admin-logout`을 거쳐 `/login?loggedOut=1`로 돌아온다. 로그인 실패 이유와 잘못된 콜백은 `/login`이 안내한다.
 
 ### 대시보드는 대부분 가짜 데이터다
 

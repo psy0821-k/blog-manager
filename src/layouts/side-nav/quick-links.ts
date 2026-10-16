@@ -1,4 +1,4 @@
-import { Book, Bot, GitBranch, LampDesk, type LucideIcon, Play, Sparkles, Triangle } from 'lucide-react';
+import { Bot, GitBranch, LampDesk, type LucideIcon, Play, Sparkles, Triangle } from 'lucide-react';
 
 export interface QuickLink {
   url: string;

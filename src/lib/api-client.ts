@@ -1,3 +1,4 @@
+import { isReloginLooping, redirectToBlogLogin } from './auth-redirect'
 import { clearToken, getToken } from './auth-token'
 import { BLOG_API_URL } from './env'
 
@@ -34,6 +35,8 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
 /** 토큰이 있으면 Bearer 헤더로 실어 GET 요청하고 JSON을 반환한다. */
 export async function apiGet<T>(path: string, options: ApiGetOptions = {}): Promise<T> {
   const token = getToken()
+  // 재로그인 후 돌아올 경로는 요청을 보낸 시점의 화면 경로로 잡는다
+  const requestPath = window.location.pathname + window.location.search
 
   const response = await fetch(buildUrl(path, options.query), {
     signal: options.signal,
@@ -41,9 +44,14 @@ export async function apiGet<T>(path: string, options: ApiGetOptions = {}): Prom
   })
 
   if (!response.ok) {
-    // 서버가 거부한 토큰은 다시 쓰지 않도록 지운다
+    // 서버가 거부한 토큰은 지우고 재로그인을 시작한다.
+    // 방금 재로그인했는데 또 거부되면(토큰을 계속 거부하는 환경) 다시 보내지 않고 오류만 남겨 루프를 끊는다.
     if (response.status === 401 || response.status === 403) {
       clearToken()
+
+      if (!isReloginLooping()) {
+        redirectToBlogLogin(requestPath)
+      }
     }
 
     throw new ApiError(response.status, `요청에 실패했습니다. (${response.status})`)

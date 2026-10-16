@@ -1,0 +1,87 @@
+import { BLOG_LOGIN_URL } from './env'
+
+const RETURN_PATH_STORAGE_KEY = 'blog-manager-return-path'
+const RELOGIN_AT_STORAGE_KEY = 'blog-manager-relogin-at'
+/** 이 시간 안에 같은 거부가 반복되면 재로그인 루프로 본다(ms) */
+const RELOGIN_LOOP_WINDOW_MS = 30_000
+const DEFAULT_RETURN_PATH = '/'
+const BLOCKED_PATHS = ['/login', '/auth/callback']
+
+/** 앱 내부 경로만 허용한다. 그 외(외부 URL, //, \, 로그인 관련 경로)는 "/"로 바꾼다. */
+export function sanitizeReturnPath(path: string | null | undefined): string {
+  if (!path || !path.startsWith('/') || path.startsWith('//') || path.includes('\\')) {
+    return DEFAULT_RETURN_PATH
+  }
+
+  const pathname = path.split(/[?#]/)[0]
+
+  if (BLOCKED_PATHS.includes(pathname)) {
+    return DEFAULT_RETURN_PATH
+  }
+
+  return path
+}
+
+export function saveReturnPath(path: string): void {
+  sessionStorage.setItem(RETURN_PATH_STORAGE_KEY, path)
+}
+
+/** 저장된 복귀 경로를 읽고 지운 뒤 검증해서 반환한다. */
+export function takeReturnPath(): string {
+  const path = sessionStorage.getItem(RETURN_PATH_STORAGE_KEY)
+  sessionStorage.removeItem(RETURN_PATH_STORAGE_KEY)
+
+  return sanitizeReturnPath(path)
+}
+
+export function buildBlogLoginUrl(blogLoginUrl: string, callbackUrl: string): string {
+  return `${blogLoginUrl}?redirect=${encodeURIComponent(callbackUrl)}`
+}
+
+/** "#token=xxx" 형태의 해시에서 토큰을 읽는다. 없거나 비어 있으면 null. */
+export function readTokenFromHash(hash: string): string | null {
+  const token = new URLSearchParams(hash.replace(/^#/, '')).get('token')
+
+  return token ? token : null
+}
+
+/** 로그인 흐름이 이미 시작됐는지. 페이지가 새로 로드되면 false로 돌아간다. */
+let isRedirecting = false
+
+/** 테스트 전용: 중복 방지 상태를 초기화한다. 앱 코드에서는 호출하지 않는다. */
+export function resetRedirectState(): void {
+  isRedirecting = false
+}
+
+/**
+ * 방금 재로그인을 시작했는데 또 거부됐는지. 블로그가 발급한 토큰을 API가 계속 거부하는 환경에서
+ * 401/403 → 로그인 → 콜백 → 다시 401/403이 새로고침을 넘어 반복되는 것을 끊는 데 쓴다.
+ * 시작 시각은 sessionStorage에 남겨 페이지를 새로 불러와도 이어진다.
+ */
+export function isReloginLooping(): boolean {
+  const startedAt = Number(sessionStorage.getItem(RELOGIN_AT_STORAGE_KEY))
+
+  return Number.isFinite(startedAt) && startedAt > 0 && Date.now() - startedAt < RELOGIN_LOOP_WINDOW_MS
+}
+
+/** 블로그 로그인으로 이동한다. 이미 시작됐다면 복귀 경로를 덮어쓰지 않고 아무것도 하지 않는다. */
+export function redirectToBlogLogin(returnPath: string): void {
+  if (isRedirecting) {
+    return
+  }
+
+  isRedirecting = true
+  sessionStorage.setItem(RELOGIN_AT_STORAGE_KEY, String(Date.now()))
+  saveReturnPath(returnPath)
+  window.location.assign(buildBlogLoginUrl(BLOG_LOGIN_URL, `${window.location.origin}/auth/callback`))
+}
+
+/** 블로그 로그인 주소와 같은 블로그의 /admin-logout 주소. 로그아웃 후 돌아올 주소를 redirect로 싣는다. */
+export function buildBlogLogoutUrl(blogLoginUrl: string, returnUrl: string): string {
+  return `${new URL(blogLoginUrl).origin}/admin-logout?redirect=${encodeURIComponent(returnUrl)}`
+}
+
+/** 블로그 세션까지 로그아웃한 뒤 로그아웃 안내 화면(/login?loggedOut=1)으로 돌아오게 한다. */
+export function redirectToBlogLogout(): void {
+  window.location.assign(buildBlogLogoutUrl(BLOG_LOGIN_URL, `${window.location.origin}/login?loggedOut=1`))
+}

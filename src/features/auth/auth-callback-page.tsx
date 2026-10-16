@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { readTokenFromHash, takeReturnPath } from '@/lib/auth-redirect'
 import { isTokenExpired, saveToken } from '@/lib/auth-token'
@@ -7,7 +7,6 @@ import { isTokenExpired, saveToken } from '@/lib/auth-token'
 export function AuthCallbackPage() {
   const navigate = useNavigate()
   const hasHandled = useRef(false)
-  const [isInvalid, setIsInvalid] = useState(false)
 
   useEffect(() => {
     if (hasHandled.current) {
@@ -18,7 +17,7 @@ export function AuthCallbackPage() {
     const token = readTokenFromHash(window.location.hash)
 
     if (!token || isTokenExpired(token)) {
-      setIsInvalid(true)
+      navigate('/login?error=invalid-token', { replace: true })
       return
     }
 
@@ -28,5 +27,5 @@ export function AuthCallbackPage() {
     navigate(takeReturnPath(), { replace: true })
   }, [navigate])
 
-  return isInvalid ? <p>로그인 정보를 확인할 수 없습니다.</p> : null
+  return null
 }

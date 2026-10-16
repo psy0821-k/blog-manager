@@ -2,9 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildBlogLoginUrl,
   buildBlogLogoutUrl,
+  isReloginLooping,
   readTokenFromHash,
   redirectToBlogLogin,
   redirectToBlogLogout,
+  resetRedirectState,
   sanitizeReturnPath,
   saveReturnPath,
   takeReturnPath,
@@ -151,6 +153,8 @@ describe('redirectToBlogLogin', () => {
 
   beforeEach(() => {
     assign.mockClear()
+    // 테스트 간 모듈 상태 공유를 끊는다
+    resetRedirectState()
     vi.stubGlobal('location', { origin: 'http://localhost:5173', assign })
   })
 
@@ -171,6 +175,73 @@ describe('redirectToBlogLogin', () => {
     redirectToBlogLogin('/manage?page=2')
 
     expect(takeReturnPath()).toBe('/manage?page=2')
+  })
+})
+
+describe('redirectToBlogLogin 중복 방지', () => {
+  const assign = vi.fn()
+
+  beforeEach(() => {
+    assign.mockClear()
+    resetRedirectState()
+    vi.stubGlobal('location', { origin: 'http://localhost:5173', assign })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('같은 경로로 연속 두 번 호출해도 window.location.assign은 한 번만 호출되어야 한다', () => {
+    redirectToBlogLogin('/manage')
+    redirectToBlogLogin('/manage')
+
+    expect(assign).toHaveBeenCalledTimes(1)
+  })
+
+  it('서로 다른 경로로 두 번 호출하면 assign은 한 번만 호출되고 복귀 경로는 첫 번째 값을 유지해야 한다', () => {
+    redirectToBlogLogin('/manage')
+    redirectToBlogLogin('/')
+
+    expect(assign).toHaveBeenCalledTimes(1)
+    expect(takeReturnPath()).toBe('/manage')
+  })
+
+  it('열 번 동시에 호출해도 assign은 한 번만 호출되어야 한다', () => {
+    for (let i = 0; i < 10; i += 1) {
+      redirectToBlogLogin('/manage')
+    }
+
+    expect(assign).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('resetRedirectState', () => {
+  const assign = vi.fn()
+
+  beforeEach(() => {
+    assign.mockClear()
+    vi.stubGlobal('location', { origin: 'http://localhost:5173', assign })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('호출한 뒤에는 redirectToBlogLogin이 다시 assign을 호출해야 한다', () => {
+    resetRedirectState()
+    redirectToBlogLogin('/manage')
+    resetRedirectState()
+    redirectToBlogLogin('/manage')
+
+    expect(assign).toHaveBeenCalledTimes(2)
+  })
+
+  it('이미 초기 상태에서 호출해도 오류 없이 redirectToBlogLogin이 정상 동작해야 한다', () => {
+    resetRedirectState()
+    resetRedirectState()
+
+    expect(() => redirectToBlogLogin('/manage')).not.toThrow()
+    expect(assign).toHaveBeenCalledTimes(1)
   })
 })
 
@@ -201,5 +272,60 @@ describe('redirectToBlogLogout', () => {
     expect(assign).toHaveBeenCalledWith(
       `http://localhost:3000/admin-logout?redirect=${encodeURIComponent('http://localhost:5173/login?loggedOut=1')}`,
     )
+  })
+})
+
+describe('isReloginLooping', () => {
+  const assign = vi.fn()
+  const START = new Date('2026-10-16T12:00:00Z')
+
+  beforeEach(() => {
+    resetRedirectState()
+    assign.mockClear()
+    vi.stubGlobal('location', { origin: 'http://localhost:5173', assign })
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(START)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('재로그인을 시작한 적이 없으면 false여야 한다', () => {
+    expect(isReloginLooping()).toBe(false)
+  })
+
+  it('재로그인을 시작한 직후에는 true여야 한다', () => {
+    redirectToBlogLogin('/manage')
+
+    expect(isReloginLooping()).toBe(true)
+  })
+
+  it('재로그인 시작 후 29초가 지나도 true여야 한다', () => {
+    redirectToBlogLogin('/manage')
+    vi.setSystemTime(START.getTime() + 29_000)
+
+    expect(isReloginLooping()).toBe(true)
+  })
+
+  it('재로그인 시작 후 30초가 지나면 false여야 한다', () => {
+    redirectToBlogLogin('/manage')
+    vi.setSystemTime(START.getTime() + 30_000)
+
+    expect(isReloginLooping()).toBe(false)
+  })
+
+  it('페이지를 새로 불러온 것처럼 모듈 상태를 초기화해도 sessionStorage 기록으로 true여야 한다', () => {
+    redirectToBlogLogin('/manage')
+    resetRedirectState()
+
+    expect(isReloginLooping()).toBe(true)
+  })
+
+  it('저장된 값이 숫자가 아니면 false여야 한다', () => {
+    sessionStorage.setItem('blog-manager-relogin-at', 'abc')
+
+    expect(isReloginLooping()).toBe(false)
   })
 })

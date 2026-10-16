@@ -37,7 +37,7 @@ src/lib/api-client.ts의 apiGet  →  fetch
 - `apiGet`(`src/lib/api-client.ts`)은 GET만 지원한다. 쿼리를 만들고, 세션 토큰이 있으면 `Authorization: Bearer`를 붙이며, 실패하면 `ApiError(status)`를 던진다. 401/403이면 저장된 토큰을 지운다.
 - 토큰은 `sessionStorage`에 JWT로 저장한다(`src/lib/auth-token.ts`). 만료 30초 전부터 만료로 취급한다. 개발 중에는 `/dev-token`(DEV 모드 전용 라우트)에 블로그가 발급한 토큰을 붙여 넣는다.
 - `useFetch(fetcher)`(`src/lib/use-fetch.ts`)는 `loading | success | error` 상태와 `reload`를 준다. **fetcher의 참조가 바뀌면 다시 요청하므로 호출부에서 `useCallback`으로 감싸야 한다.**
-- 같은 훅 형태를 `src/features/posts/use-post-list.ts`, `categories/use-categories.ts`, `dashboard/use-weekly-post-counts.ts`가 쓴다.
+- 같은 훅 형태를 `src/features/posts/use-post-list.ts`, `categories/use-categories.ts`, `dashboard/hooks/use-weekly-post-counts.ts`가 쓴다.
 
 ### 블로그 API 특성
 
@@ -54,13 +54,13 @@ src/lib/api-client.ts의 apiGet  →  fetch
 `src/features/dashboard/dashboard-mock.ts`의 mock으로 그린다. 예: "아이디어 생성" AI 대화는 `setTimeout` 뒤 고정 응답을 붙이는 가짜이고 실제 AI는 연결되지 않았다. **실데이터로 연결된 것은 "주차별 성실도", "최근 게시글", "임시 저장 게시물" 카드뿐이다.**
 
 주차별 성실도의 흐름:
-`api/weekly-consistency-api.ts`(프로젝트·랩 발행 글을 병렬 조회, 하나라도 실패하면 reject) → `use-weekly-post-counts.ts`(조회 후 집계) → `weekly-post-counts.ts`(순수 함수: 이번 달을 1일 기준 7일 단위 주차로 계산) → `weekly-consistency-section.tsx`가 상태에 따라 로딩/에러/카드 중 하나를 고른다. 개발일지와 임시저장은 집계하지 않는다.
+`api/weekly-consistency-api.ts`(프로젝트·랩 발행 글을 병렬 조회, 하나라도 실패하면 reject) → `hooks/use-weekly-post-counts.ts`(조회 후 집계) → `weekly-post-counts.ts`(순수 함수: 이번 달을 1일 기준 7일 단위 주차로 계산) → `weekly-consistency-section.tsx`가 상태에 따라 로딩/에러/카드 중 하나를 고른다. 개발일지와 임시저장은 집계하지 않는다.
 
 최근 게시글의 흐름:
-`api/recent-posts-api.ts`(프로젝트·랩·개발일지의 최신 1건씩을 병렬 조회, 종류 고정 순서, 글이 없는 종류는 빠짐, 하나라도 실패하면 reject) → `use-recent-posts.ts` → `recent-posts-section.tsx`가 `PostListCard`의 `status`(loading/error/success)로 상태를 표시한다. 임시저장은 포함하지 않는다.
+`api/recent-posts-api.ts`(프로젝트·랩·개발일지의 최신 1건씩을 병렬 조회, 종류 고정 순서, 글이 없는 종류는 빠짐, 하나라도 실패하면 reject) → `hooks/use-recent-posts.ts` → `recent-posts-section.tsx`가 `PostListCard`의 `status`(loading/error/success)로 상태를 표시한다. 임시저장은 포함하지 않는다.
 
 임시 저장 게시물의 흐름:
-`api/draft-posts-api.ts`(세 종류를 `draft: true`, `pageSize: 50`으로 병렬 조회해 합치고 `updatedAt` 오름차순 상위 3건만 남김, 하나라도 실패하면 reject) → `use-draft-posts.ts` → `draft-posts-section.tsx`가 `PostListCard`로 표시하고 우측에는 `elapsed-days.ts`의 `formatElapsedDays`('오늘', 'N일 전')를 쓴다. `draft=true`는 관리자 토큰이 필요해서 토큰이 없거나 거부되면(401/403) 일반 에러와 같은 화면이 나온다. 종류별 임시저장이 50건을 넘으면 가장 오래된 글이 빠질 수 있다.
+`api/draft-posts-api.ts`(세 종류를 `draft: true`, `pageSize: 50`으로 병렬 조회해 합치고 `updatedAt` 오름차순 상위 3건만 남김, 하나라도 실패하면 reject) → `hooks/use-draft-posts.ts` → `draft-posts-section.tsx`가 `PostListCard`로 표시하고 우측에는 `elapsed-days.ts`의 `formatElapsedDays`('오늘', 'N일 전')를 쓴다. `draft=true`는 관리자 토큰이 필요해서 토큰이 없거나 거부되면(401/403) 일반 에러와 같은 화면이 나온다. 종류별 임시저장이 50건을 넘으면 가장 오래된 글이 빠질 수 있다.
 
 ## 컨벤션
 

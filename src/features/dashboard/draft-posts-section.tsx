@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { DraftPost } from './api/draft-posts-api';
 import { formatElapsedDays } from './elapsed-days';
 import { PostListCard } from './post-list-card';
-import { useDraftPosts } from './use-draft-posts';
+import { useDraftPosts } from './hooks/use-draft-posts';
 
 function toSummary({ id, title, type, updatedAt }: DraftPost, now: Date) {
   return { id, title, type, meta: formatElapsedDays(updatedAt, now) };

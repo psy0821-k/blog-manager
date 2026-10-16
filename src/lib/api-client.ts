@@ -1,4 +1,4 @@
-import { redirectToBlogLogin } from './auth-redirect'
+import { isReloginLooping, redirectToBlogLogin } from './auth-redirect'
 import { clearToken, getToken } from './auth-token'
 import { BLOG_API_URL } from './env'
 
@@ -44,10 +44,14 @@ export async function apiGet<T>(path: string, options: ApiGetOptions = {}): Prom
   })
 
   if (!response.ok) {
-    // 서버가 거부한 토큰은 지우고 재로그인을 시작한다
+    // 서버가 거부한 토큰은 지우고 재로그인을 시작한다.
+    // 방금 재로그인했는데 또 거부되면(토큰을 계속 거부하는 환경) 다시 보내지 않고 오류만 남겨 루프를 끊는다.
     if (response.status === 401 || response.status === 403) {
       clearToken()
-      redirectToBlogLogin(requestPath)
+
+      if (!isReloginLooping()) {
+        redirectToBlogLogin(requestPath)
+      }
     }
 
     throw new ApiError(response.status, `요청에 실패했습니다. (${response.status})`)

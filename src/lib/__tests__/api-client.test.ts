@@ -263,6 +263,43 @@ describe('apiGet과 실제 auth-redirect 연결', () => {
     expect(authRedirect.takeReturnPath()).toBe('/manage?page=2')
   })
 
+  it('직전 재로그인으로부터 30초 안에 다시 403을 받으면 토큰만 지우고 assign은 호출하지 않아야 한다', async () => {
+    authRedirect.redirectToBlogLogin('/manage')
+    authRedirect.resetRedirectState()
+    assign.mockClear()
+    saveToken(createToken())
+    fetchMock.mockResolvedValue(jsonResponse(403))
+
+    await expect(apiGet('/api/projects')).rejects.toMatchObject({ status: 403 })
+
+    expect(assign).not.toHaveBeenCalled()
+    expect(getToken()).toBeNull()
+  })
+
+  it('30초 안에 연속으로 거부돼도 에러는 그대로 reject되어 화면이 오류를 표시할 수 있어야 한다', async () => {
+    authRedirect.redirectToBlogLogin('/manage')
+    authRedirect.resetRedirectState()
+    fetchMock.mockResolvedValue(jsonResponse(401))
+
+    await expect(apiGet('/api/projects')).rejects.toBeInstanceOf(ApiError)
+  })
+
+  it('직전 재로그인으로부터 30초가 지난 뒤의 403은 정상적으로 재로그인해야 한다', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-16T12:00:00Z'))
+    authRedirect.redirectToBlogLogin('/manage')
+    authRedirect.resetRedirectState()
+    assign.mockClear()
+    vi.setSystemTime(new Date('2026-10-16T12:00:31Z'))
+    saveToken(createToken())
+    fetchMock.mockResolvedValue(jsonResponse(403))
+
+    await apiGet('/api/projects').catch(() => {})
+
+    expect(assign).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
+  })
+
   it('401로 redirectToBlogLogin이 이미 호출된 뒤 화면 가드가 다시 호출해도 assign은 총 한 번이어야 한다', async () => {
     fetchMock.mockResolvedValue(jsonResponse(401))
 

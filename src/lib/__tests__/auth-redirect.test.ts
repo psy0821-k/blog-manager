@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildBlogLoginUrl,
   buildBlogLogoutUrl,
+  isReloginLooping,
   readTokenFromHash,
   redirectToBlogLogin,
   redirectToBlogLogout,
@@ -271,5 +272,60 @@ describe('redirectToBlogLogout', () => {
     expect(assign).toHaveBeenCalledWith(
       `http://localhost:3000/admin-logout?redirect=${encodeURIComponent('http://localhost:5173/login?loggedOut=1')}`,
     )
+  })
+})
+
+describe('isReloginLooping', () => {
+  const assign = vi.fn()
+  const START = new Date('2026-10-16T12:00:00Z')
+
+  beforeEach(() => {
+    resetRedirectState()
+    assign.mockClear()
+    vi.stubGlobal('location', { origin: 'http://localhost:5173', assign })
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(START)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('재로그인을 시작한 적이 없으면 false여야 한다', () => {
+    expect(isReloginLooping()).toBe(false)
+  })
+
+  it('재로그인을 시작한 직후에는 true여야 한다', () => {
+    redirectToBlogLogin('/manage')
+
+    expect(isReloginLooping()).toBe(true)
+  })
+
+  it('재로그인 시작 후 29초가 지나도 true여야 한다', () => {
+    redirectToBlogLogin('/manage')
+    vi.setSystemTime(START.getTime() + 29_000)
+
+    expect(isReloginLooping()).toBe(true)
+  })
+
+  it('재로그인 시작 후 30초가 지나면 false여야 한다', () => {
+    redirectToBlogLogin('/manage')
+    vi.setSystemTime(START.getTime() + 30_000)
+
+    expect(isReloginLooping()).toBe(false)
+  })
+
+  it('페이지를 새로 불러온 것처럼 모듈 상태를 초기화해도 sessionStorage 기록으로 true여야 한다', () => {
+    redirectToBlogLogin('/manage')
+    resetRedirectState()
+
+    expect(isReloginLooping()).toBe(true)
+  })
+
+  it('저장된 값이 숫자가 아니면 false여야 한다', () => {
+    sessionStorage.setItem('blog-manager-relogin-at', 'abc')
+
+    expect(isReloginLooping()).toBe(false)
   })
 })

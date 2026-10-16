@@ -3,11 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { LoginPage } from '@/features/auth/login-page'
+import { redirectToBlogLogout } from '@/lib/auth-redirect'
 import { getToken, saveToken } from '@/lib/auth-token'
 import { AppLayout } from '../app-layout'
 
-vi.mock('@/lib/auth-redirect', () => ({ redirectToBlogLogin: vi.fn() }))
+vi.mock('@/lib/auth-redirect', () => ({ redirectToBlogLogout: vi.fn() }))
 
 /** exp(초)만 가진 JWT를 만든다. */
 function createToken(expOffsetSeconds: number) {
@@ -21,7 +21,6 @@ function renderLayout() {
     <TooltipProvider>
       <MemoryRouter initialEntries={['/']}>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
           <Route element={<AppLayout />}>
             <Route path="/" element={<div>대시보드 화면</div>} />
           </Route>
@@ -52,14 +51,13 @@ describe('AppLayout 로그아웃', () => {
     expect(screen.queryByRole('link', { name: '로그인' })).not.toBeInTheDocument()
   })
 
-  it('로그아웃을 누르면 토큰이 삭제되고 다시 로그인 버튼이 있는 화면으로 이동해야 한다', async () => {
+  it('로그아웃을 누르면 토큰이 삭제되고 블로그 로그아웃으로 이동해야 한다', async () => {
     const user = userEvent.setup()
     renderLayout()
 
     await user.click(screen.getByRole('button', { name: '로그아웃' }))
 
     expect(getToken()).toBeNull()
-    expect(screen.getByRole('button', { name: '다시 로그인' })).toBeInTheDocument()
-    expect(screen.queryByText('대시보드 화면')).not.toBeInTheDocument()
+    expect(redirectToBlogLogout).toHaveBeenCalledTimes(1)
   })
 })

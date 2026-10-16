@@ -46,3 +46,13 @@ export function redirectToBlogLogin(returnPath: string): void {
   saveReturnPath(returnPath)
   window.location.assign(buildBlogLoginUrl(BLOG_LOGIN_URL, `${window.location.origin}/auth/callback`))
 }
+
+/** 블로그 로그인 주소와 같은 블로그의 /admin-logout 주소. 로그아웃 후 돌아올 주소를 redirect로 싣는다. */
+export function buildBlogLogoutUrl(blogLoginUrl: string, returnUrl: string): string {
+  return `${new URL(blogLoginUrl).origin}/admin-logout?redirect=${encodeURIComponent(returnUrl)}`
+}
+
+/** 블로그 세션까지 로그아웃한 뒤 로그아웃 안내 화면(/login?loggedOut=1)으로 돌아오게 한다. */
+export function redirectToBlogLogout(): void {
+  window.location.assign(buildBlogLogoutUrl(BLOG_LOGIN_URL, `${window.location.origin}/login?loggedOut=1`))
+}

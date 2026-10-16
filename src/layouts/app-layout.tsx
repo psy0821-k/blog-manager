@@ -1,5 +1,4 @@
-import { useNavigate } from 'react-router-dom';
-import { LOGGED_OUT_QUERY } from '@/features/auth/login-page';
+import { redirectToBlogLogout } from '@/lib/auth-redirect';
 import { clearToken } from '@/lib/auth-token';
 import SideNav from './side-nav/side-nav';
 
@@ -7,11 +6,10 @@ import SideNav from './side-nav/side-nav';
 const ADMIN_DISPLAY_NAME = '관리자';
 
 export function AppLayout() {
-  const navigate = useNavigate();
-
   const handleLogout = () => {
     clearToken();
-    navigate(`/login?${LOGGED_OUT_QUERY}`, { replace: true });
+    // 블로그 세션까지 지워야 다시 들어올 때 바로 재로그인되지 않는다
+    redirectToBlogLogout();
   };
 
   return (

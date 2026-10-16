@@ -3,10 +3,10 @@ import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { redirectToBlogLogin } from '@/lib/auth-redirect'
 
-/** 로그아웃 직후에는 자동 이동하지 않고 버튼으로만 다시 로그인한다(바로 재로그인되는 것을 막는다). */
-export const LOGGED_OUT_QUERY = 'loggedOut=1'
-
-/** 평소에는 화면 없이 블로그 로그인으로 보낸다. */
+/**
+ * 평소에는 화면 없이 블로그 로그인으로 보낸다.
+ * 로그아웃 직후(?loggedOut=1)에는 자동 이동하지 않고 버튼으로만 다시 로그인한다.
+ */
 export function LoginPage() {
   const [searchParams] = useSearchParams()
   const isLoggedOut = searchParams.get('loggedOut') === '1'

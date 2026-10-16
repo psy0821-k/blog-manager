@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   buildBlogLoginUrl,
+  buildBlogLogoutUrl,
   readTokenFromHash,
   redirectToBlogLogin,
+  redirectToBlogLogout,
   sanitizeReturnPath,
   saveReturnPath,
   takeReturnPath,
@@ -169,5 +171,35 @@ describe('redirectToBlogLogin', () => {
     redirectToBlogLogin('/manage?page=2')
 
     expect(takeReturnPath()).toBe('/manage?page=2')
+  })
+})
+
+describe('buildBlogLogoutUrl', () => {
+  it('블로그 로그인 주소의 오리진에 /admin-logout을 붙이고 돌아올 주소를 redirect로 실어야 한다', () => {
+    expect(buildBlogLogoutUrl('http://localhost:3000/admin-login', 'http://localhost:5173/login?loggedOut=1')).toBe(
+      `http://localhost:3000/admin-logout?redirect=${encodeURIComponent('http://localhost:5173/login?loggedOut=1')}`,
+    )
+  })
+})
+
+describe('redirectToBlogLogout', () => {
+  const assign = vi.fn()
+
+  beforeEach(() => {
+    assign.mockClear()
+    vi.stubGlobal('location', { origin: 'http://localhost:5173', assign })
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('블로그 로그아웃 주소로 이동하고 돌아올 곳을 로그아웃 안내 화면으로 지정해야 한다', () => {
+    redirectToBlogLogout()
+
+    expect(assign).toHaveBeenCalledTimes(1)
+    expect(assign).toHaveBeenCalledWith(
+      `http://localhost:3000/admin-logout?redirect=${encodeURIComponent('http://localhost:5173/login?loggedOut=1')}`,
+    )
   })
 })

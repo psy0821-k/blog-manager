@@ -29,6 +29,7 @@ function renderCallback(hash: string) {
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
         <Route path="/manage" element={<div>관리 화면</div>} />
         <Route path="/" element={<div>대시보드 화면</div>} />
+        <Route path="/login" element={<div>로그인 화면</div>} />
       </Routes>
       <LocationDisplay />
     </MemoryRouter>,
@@ -101,34 +102,43 @@ describe('AuthCallbackPage', () => {
     expect(Object.keys(sessionStorage).filter(key => key !== TOKEN_STORAGE_KEY)).toEqual([])
   })
 
-  it('해시에 토큰이 없으면 저장하지 않고 안내 문구를 표시해야 한다', () => {
+  it('해시에 토큰이 없으면 저장하지 않고 /login?error=invalid-token으로 이동해야 한다', () => {
     renderCallback('')
 
-    expect(screen.getByText(INVALID_MESSAGE)).toBeInTheDocument()
+    expect(screen.getByText('로그인 화면')).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/login?error=invalid-token')
     expect(sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
   })
 
-  it('토큰이 JWT 형식이 아니면 저장하지 않고 안내 문구를 표시해야 한다', () => {
+  it('토큰이 JWT 형식이 아니면 저장하지 않고 /login?error=invalid-token으로 이동해야 한다', () => {
     renderCallback('#token=not-a-jwt')
 
-    expect(screen.getByText(INVALID_MESSAGE)).toBeInTheDocument()
+    expect(screen.getByText('로그인 화면')).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/login?error=invalid-token')
     expect(sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
   })
 
-  it('토큰이 이미 만료됐으면 저장하지 않고 안내 문구를 표시해야 한다', () => {
+  it('토큰이 이미 만료됐으면 저장하지 않고 /login?error=invalid-token으로 이동해야 한다', () => {
     renderCallback(`#token=${createToken(-100)}`)
 
-    expect(screen.getByText(INVALID_MESSAGE)).toBeInTheDocument()
+    expect(screen.getByText('로그인 화면')).toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/login?error=invalid-token')
     expect(sessionStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
   })
 
-  it('토큰이 유효하지 않아도 이동하지 않고 redirectToBlogLogin도 호출하지 않아야 한다', () => {
+  it('토큰이 유효하지 않으면 콜백 화면에 안내 문구를 직접 그리지 않아야 한다', () => {
+    renderCallback('#token=not-a-jwt')
+
+    expect(screen.queryByText(INVALID_MESSAGE)).not.toBeInTheDocument()
+    expect(screen.getByTestId('location')).toHaveTextContent('/login?error=invalid-token')
+  })
+
+  it('토큰이 유효하지 않아도 redirectToBlogLogin은 호출하지 않아야 한다', () => {
     const redirectSpy = vi.spyOn(authRedirect, 'redirectToBlogLogin').mockImplementation(() => {})
 
     renderCallback('#token=not-a-jwt')
 
-    expect(screen.getByText(INVALID_MESSAGE)).toBeInTheDocument()
-    expect(screen.getByTestId('location')).toHaveTextContent('/auth/callback')
+    expect(screen.getByTestId('location')).toHaveTextContent('/login?error=invalid-token')
     expect(redirectSpy).not.toHaveBeenCalled()
   })
 })

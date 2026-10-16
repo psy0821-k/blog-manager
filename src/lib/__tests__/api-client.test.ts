@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, apiGet, apiPatch } from '../api-client'
+import { ApiError, apiDelete, apiGet, apiPatch } from '../api-client'
 import * as authRedirect from '../auth-redirect'
 import { getToken, saveToken } from '../auth-token'
 
@@ -447,6 +447,133 @@ describe('apiPatch', () => {
       )
 
       const pending = apiPatch('/api/projects/hello', { published: true }, { signal: controller.signal })
+      controller.abort()
+
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    })
+  })
+})
+
+describe('apiDelete', () => {
+  describe('정상', () => {
+    it('BLOG_API_URL + path로 DELETE하고 본문과 Content-Type 헤더는 보내지 않아야 한다', async () => {
+      fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+
+      await apiDelete('/api/projects/hello')
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      const [url, init] = fetchMock.mock.calls[0]
+
+      expect(url).toBe('http://blog.test/api/projects/hello')
+      expect(init?.method).toBe('DELETE')
+      expect(init?.body).toBeUndefined()
+      expect(init?.headers ?? {}).not.toHaveProperty('Content-Type')
+    })
+
+    it('토큰이 저장돼 있으면 Authorization: Bearer를 싣고 없으면 Authorization 헤더를 붙이지 않아야 한다', async () => {
+      const token = createToken()
+      saveToken(token)
+      // 호출할 때마다 새 Response를 돌려준다(본문은 한 번만 읽을 수 있다)
+      fetchMock.mockImplementation(async () => new Response(null, { status: 204 }))
+
+      await apiDelete('/api/projects/hello')
+
+      expect(fetchMock.mock.calls[0][1]?.headers).toEqual({ Authorization: `Bearer ${token}` })
+
+      sessionStorage.clear()
+      fetchMock.mockClear()
+
+      await apiDelete('/api/projects/hello')
+
+      expect(fetchMock.mock.calls[0][1]?.headers ?? {}).not.toHaveProperty('Authorization')
+    })
+
+    it('응답이 204(본문 없음)이면 JSON 파싱 오류 없이 undefined로 resolve해야 한다', async () => {
+      fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+
+      await expect(apiDelete('/api/projects/hello')).resolves.toBeUndefined()
+    })
+
+    it('signal을 넘기면 fetch에 그대로 전달해야 한다', async () => {
+      fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+      const controller = new AbortController()
+
+      await apiDelete('/api/projects/hello', { signal: controller.signal })
+
+      expect(fetchMock.mock.calls[0][1]?.signal).toBe(controller.signal)
+    })
+  })
+
+  describe('경계', () => {
+    it('응답이 200이고 본문이 비어 있어도 undefined로 resolve해야 한다', async () => {
+      fetchMock.mockResolvedValue(new Response('', { status: 200 }))
+
+      await expect(apiDelete('/api/projects/hello')).resolves.toBeUndefined()
+    })
+
+    it.each([400, 404, 500])('응답이 %i이면 토큰을 지우지 않고 재로그인 없이 ApiError(status)로 reject해야 한다', async (status) => {
+      const token = createToken()
+      saveToken(token)
+      fetchMock.mockResolvedValue(jsonResponse(status))
+
+      const rejection = apiDelete('/api/projects/hello')
+
+      await expect(rejection).rejects.toBeInstanceOf(ApiError)
+      await expect(rejection).rejects.toMatchObject({ status })
+      expect(getToken()).toBe(token)
+      expect(mockedRedirect).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('예외', () => {
+    it.each([401, 403])('응답이 %i이면 토큰을 지우고 요청 시점 경로로 재로그인을 한 번 시작하며 ApiError로 reject해야 한다', async (status) => {
+      saveToken(createToken())
+      fetchMock.mockImplementation(async () => {
+        // 응답을 기다리는 사이 화면 경로가 바뀐 상황
+        stubLocation('/other', '')
+        return jsonResponse(status)
+      })
+
+      await expect(apiDelete('/api/projects/hello')).rejects.toMatchObject({ status })
+
+      expect(getToken()).toBeNull()
+      expect(mockedRedirect).toHaveBeenCalledTimes(1)
+      expect(mockedRedirect).toHaveBeenCalledWith('/manage?page=2')
+    })
+
+    it.each([401, 403])('응답이 %i이지만 재로그인 루프 상태면 토큰만 지우고 재로그인은 호출하지 않으며 ApiError로 reject해야 한다', async (status) => {
+      saveToken(createToken())
+      sessionStorage.setItem('blog-manager-relogin-at', String(Date.now()))
+      fetchMock.mockResolvedValue(jsonResponse(status))
+
+      await expect(apiDelete('/api/projects/hello')).rejects.toBeInstanceOf(ApiError)
+
+      expect(getToken()).toBeNull()
+      expect(mockedRedirect).not.toHaveBeenCalled()
+    })
+
+    it('fetch가 네트워크 오류로 reject되면 같은 오류를 전파하고 토큰을 지우지 않으며 재로그인도 호출하지 않아야 한다', async () => {
+      const token = createToken()
+      saveToken(token)
+      const networkError = new TypeError('network')
+      fetchMock.mockRejectedValue(networkError)
+
+      await expect(apiDelete('/api/projects/hello')).rejects.toBe(networkError)
+
+      expect(getToken()).toBe(token)
+      expect(mockedRedirect).not.toHaveBeenCalled()
+    })
+
+    it('signal이 취소되면 AbortError로 reject해야 한다', async () => {
+      const controller = new AbortController()
+      fetchMock.mockImplementation(
+        (_url, init) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+          }),
+      )
+
+      const pending = apiDelete('/api/projects/hello', { signal: controller.signal })
       controller.abort()
 
       await expect(pending).rejects.toMatchObject({ name: 'AbortError' })

@@ -1,4 +1,4 @@
-import { apiGet, apiPatch } from '../../lib/api-client'
+import { apiDelete, apiGet, apiPatch } from '../../lib/api-client'
 import type { PostListResponse, PostType } from './post-types'
 
 const POST_LIST_PATHS: Record<PostType, string> = {
@@ -28,7 +28,17 @@ export function fetchPostList(
   })
 }
 
+/** 종류별 경로 + 인코딩된 slug. updatePostPublished와 deletePost가 공유한다. */
+function buildPostPath(type: PostType, slug: string): string {
+  return `${POST_LIST_PATHS[type]}/${encodeURIComponent(slug)}`
+}
+
 /** 글의 발행 여부를 바꾼다. 성공 응답(글 JSON)은 쓰지 않으므로 반환하지 않는다. */
 export async function updatePostPublished(type: PostType, slug: string, published: boolean): Promise<void> {
-  await apiPatch<unknown>(`${POST_LIST_PATHS[type]}/${encodeURIComponent(slug)}`, { published })
+  await apiPatch<unknown>(buildPostPath(type, slug), { published })
+}
+
+/** 글을 삭제한다. 성공 응답은 본문이 없으므로 반환하지 않는다. */
+export async function deletePost(type: PostType, slug: string): Promise<void> {
+  await apiDelete(buildPostPath(type, slug))
 }

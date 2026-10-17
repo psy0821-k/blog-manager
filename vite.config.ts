@@ -22,8 +22,8 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       setupFiles: ['./src/test/setup.ts'],
-      // Playwright E2E 스펙은 Vitest가 읽지 않는다
-      exclude: ['e2e/**', 'node_modules/**'],
+      // Playwright E2E 스펙과 별도 패키지인 server/ 테스트는 루트 Vitest가 읽지 않는다
+      exclude: ['e2e/**', 'server/**', 'node_modules/**'],
     },
     server: {
       // 블로그의 CORS 설정 전까지 개발 서버가 /api를 중계한다

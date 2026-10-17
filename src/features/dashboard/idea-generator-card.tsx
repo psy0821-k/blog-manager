@@ -3,14 +3,19 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Save, Send, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { MOCK_IDEA_DRAFT, MOCK_IDEA_SUGGESTIONS, type ChatMessage, type IdeaDraft } from './dashboard-mock';
+import { generateIdeaReply, IdeaAiError, summarizeIdeaDraft } from './api/idea-ai-api';
+import type { ChatMessage, IdeaDraft } from './dashboard-mock';
 import { IdeaChatMessage } from './idea-chat-message';
 import { IdeaSaveDialog } from './idea-save-dialog';
 
-/** 가짜 AI 응답이 도착하기까지의 지연(ms). 실제 API 연동 시 제거한다. */
-const MOCK_REPLY_DELAY_MS = 700;
+const RATE_LIMIT_MESSAGE = 'AI 사용 한도를 넘었어요. 잠시 후 다시 시도해 주세요.';
+const GENERIC_ERROR_MESSAGE = 'AI 응답을 받지 못했어요. 다시 시도해 주세요.';
 
-/** AI와 메시지를 주고받으며 글감 아이디어를 만든다. 지금은 가짜 응답으로 동작한다. */
+function toErrorMessage(error: unknown): string {
+  return error instanceof IdeaAiError && error.status === 429 ? RATE_LIMIT_MESSAGE : GENERIC_ERROR_MESSAGE;
+}
+
+/** AI와 메시지를 주고받으며 글감 아이디어를 만든다. */
 export function IdeaGeneratorCard() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -19,7 +24,8 @@ export function IdeaGeneratorCard() {
   const [draft, setDraft] = useState<IdeaDraft | null>(null);
   const [savedTitle, setSavedTitle] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<number | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const nextIdRef = useRef(1);
 
   // 새 메시지가 생기면 대화 영역만 맨 아래로 스크롤한다
@@ -30,13 +36,13 @@ export function IdeaGeneratorCard() {
 
   useEffect(() => {
     return () => {
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+      abortRef.current?.abort();
     };
   }, []);
 
   const isBusy = isReplying || isSummarizing;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const text = input.trim();
     if (!text || isBusy) return;
@@ -45,29 +51,46 @@ export function IdeaGeneratorCard() {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setSavedTitle(null);
+    setErrorMessage(null);
     setIsReplying(true);
 
-    timerRef.current = window.setTimeout(() => {
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      const { text: replyText, suggestions } = await generateIdeaReply([...messages, userMessage], controller.signal);
       const reply: ChatMessage = {
         id: nextIdRef.current++,
         role: 'assistant',
-        text: `"${text}" 주제로 이런 글감은 어때요?`,
-        suggestions: MOCK_IDEA_SUGGESTIONS.slice(0, 2),
+        text: replyText,
+        suggestions: suggestions.map(suggestion => ({ ...suggestion, id: nextIdRef.current++ })),
       };
       setMessages(prev => [...prev, reply]);
-      setIsReplying(false);
-    }, MOCK_REPLY_DELAY_MS);
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setErrorMessage(toErrorMessage(error));
+    } finally {
+      if (!controller.signal.aborted) setIsReplying(false);
+    }
   };
 
-  // 대화를 요약해 저장 초안을 만든다. 지금은 가짜 요약을 돌려준다.
-  const handleRequestSave = () => {
+  // 대화를 요약해 저장 초안을 만든다
+  const handleRequestSave = async () => {
     if (messages.length === 0 || isBusy) return;
+    setErrorMessage(null);
     setIsSummarizing(true);
 
-    timerRef.current = window.setTimeout(() => {
-      setDraft(MOCK_IDEA_DRAFT);
-      setIsSummarizing(false);
-    }, MOCK_REPLY_DELAY_MS);
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      setDraft(await summarizeIdeaDraft(messages, controller.signal));
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      setErrorMessage(toErrorMessage(error));
+    } finally {
+      if (!controller.signal.aborted) setIsSummarizing(false);
+    }
   };
 
   const handleSaveDraft = (savedDraft: IdeaDraft) => {
@@ -102,6 +125,11 @@ export function IdeaGeneratorCard() {
           ))}
           {isReplying && <p className="animate-pulse text-sm text-muted-foreground">AI가 생각하는 중…</p>}
         </div>
+        {errorMessage && (
+          <p role="alert" className="text-sm text-destructive">
+            {errorMessage}
+          </p>
+        )}
         {savedTitle && <p className="text-sm text-muted-foreground">"{savedTitle}" 글감으로 저장했어요.</p>}
         <form className="flex flex-wrap gap-2" onSubmit={handleSubmit}>
           <Input

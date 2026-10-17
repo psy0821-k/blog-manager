@@ -1,0 +1,9 @@
+// 도메인 모델은 이후 이슈에서 추가한다. 연결 문자열은 prisma.config.ts(DIRECT_URL)와 앱 코드(DATABASE_URL)에서 다룬다.
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

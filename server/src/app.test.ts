@@ -2,12 +2,13 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createApp } from './app'
+import { signTestToken, TEST_SECRET } from './auth/auth-test-helpers'
 import { MissingEnvError } from './config/env'
 import type { PingDatabase } from './db/prisma-client'
 
 /** createApp을 임시 포트에 띄워 baseUrl과 함께 콜백을 실행하고 서버를 닫는다. */
 async function withServer(pingDatabase: PingDatabase, run: (baseUrl: string) => Promise<void>): Promise<void> {
-  const server = createServer(createApp({ pingDatabase }))
+  const server = createServer(createApp({ pingDatabase, authSecret: TEST_SECRET }))
   await new Promise<void>((resolve) => server.listen(0, resolve))
   const { port } = server.address() as AddressInfo
 
@@ -79,9 +80,13 @@ describe('createApp GET /health', () => {
     expect(logged).not.toMatch(/postgres(ql)?:\/\//)
   })
 
-  it('정의되지 않은 경로는 404를 응답해야 한다', async () => {
+  it('유효한 ADMIN 토큰으로 정의되지 않은 경로를 호출하면 404를 응답해야 한다', async () => {
+    const token = await signTestToken()
+
     await withServer(async () => {}, async (baseUrl) => {
-      const response = await fetch(`${baseUrl}/unknown`)
+      const response = await fetch(`${baseUrl}/unknown`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
       expect(response.status).toBe(404)
     })

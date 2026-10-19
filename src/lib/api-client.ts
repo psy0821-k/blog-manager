@@ -19,7 +19,7 @@ export interface ApiGetOptions {
   signal?: AbortSignal
 }
 
-function buildUrl(path: string, query?: Record<string, QueryValue>): string {
+function buildUrl(path: string, query?: Record<string, QueryValue>, baseUrl = BLOG_API_URL): string {
   const params = new URLSearchParams()
 
   for (const [key, value] of Object.entries(query ?? {})) {
@@ -29,10 +29,10 @@ function buildUrl(path: string, query?: Record<string, QueryValue>): string {
   }
 
   const queryString = params.toString()
-  return `${BLOG_API_URL}${path}${queryString ? `?${queryString}` : ''}`
+  return `${baseUrl}${path}${queryString ? `?${queryString}` : ''}`
 }
 
-type HttpMethod = 'GET' | 'PATCH' | 'DELETE'
+type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
 interface RequestOptions {
   method: HttpMethod
@@ -40,14 +40,21 @@ interface RequestOptions {
   /** 있으면 JSON으로 직렬화해 Content-Type: application/json과 함께 보낸다. */
   body?: unknown
   signal?: AbortSignal
+  /** 생략하면 블로그 API 주소(BLOG_API_URL). */
+  baseUrl?: string
 }
 
 export interface ApiWriteOptions {
   signal?: AbortSignal
 }
 
-/** apiGet/apiPatch/apiDelete가 공유하는 요청 코어. 본문 없는 응답(204 등)은 undefined로 반환한다. */
-async function request<T>(path: string, { method, query, body, signal }: RequestOptions): Promise<T> {
+export interface ApiPostOptions extends ApiWriteOptions {
+  /** 생략하면 블로그 API 주소(BLOG_API_URL). 자체 서버는 SERVER_API_URL을 넘긴다. */
+  baseUrl?: string
+}
+
+/** apiGet/apiPost/apiPatch/apiDelete가 공유하는 요청 코어. 본문 없는 응답(204 등)은 undefined로 반환한다. */
+async function request<T>(path: string, { method, query, body, signal, baseUrl }: RequestOptions): Promise<T> {
   const token = getToken()
   // 재로그인 후 돌아올 경로는 요청을 보낸 시점의 화면 경로로 잡는다
   const requestPath = window.location.pathname + window.location.search
@@ -60,7 +67,7 @@ async function request<T>(path: string, { method, query, body, signal }: Request
     headers['Content-Type'] = 'application/json'
   }
 
-  const response = await fetch(buildUrl(path, query), {
+  const response = await fetch(buildUrl(path, query, baseUrl), {
     method,
     signal,
     headers: Object.keys(headers).length > 0 ? headers : undefined,
@@ -88,6 +95,11 @@ async function request<T>(path: string, { method, query, body, signal }: Request
 /** 토큰이 있으면 Bearer 헤더로 실어 GET 요청하고 JSON을 반환한다. */
 export function apiGet<T>(path: string, options: ApiGetOptions = {}): Promise<T> {
   return request<T>(path, { method: 'GET', ...options })
+}
+
+/** 토큰을 Bearer로 실어 JSON 본문을 POST하고 응답 JSON(없으면 undefined)을 반환한다. */
+export function apiPost<T>(path: string, body: unknown, options: ApiPostOptions = {}): Promise<T> {
+  return request<T>(path, { method: 'POST', body, signal: options.signal, baseUrl: options.baseUrl })
 }
 
 /** 토큰을 Bearer로 실어 DELETE 요청한다. 성공(204 등 본문 없음)이면 undefined로 resolve한다. */

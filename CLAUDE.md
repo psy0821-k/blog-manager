@@ -18,12 +18,14 @@ npm run test:e2e   # playwright test (e2e/ 폴더, 개발 서버를 자동으로
 
 - `BLOG_API_PROXY_TARGET`: 개발 서버가 `/api`를 중계할 블로그 주소. 서버 전용이며 `VITE_` 접두사가 없다. **`.env`를 바꾼 뒤에는 개발 서버를 재시작해야 읽힌다.**
 - `VITE_BLOG_API_URL`: 배포용 API 주소. **개발 중에는 비워 둔다.** 값이 있으면 프록시를 거치지 않고 브라우저가 직접 호출해 블로그 쪽 CORS에 막힌다.
+- `SERVER_API_PROXY_TARGET`: 개발 서버가 `/server-api`를 중계할 자체 서버(`server/`) 주소. 서버 전용이며 `VITE_` 접두사가 없다. 중계할 때 `/server-api` 접두사를 떼고 보낸다.
+- `VITE_SERVER_API_URL`: 배포용 자체 서버 주소. **개발 중에는 비워 둔다.** 비어 있으면 `SERVER_API_URL`(`src/lib/env.ts`)이 `/server-api` 프록시 경로가 되고, 값이 있으면 브라우저가 서버를 직접 호출하므로 서버의 `ADMIN_APP_ORIGIN`(CORS)에 관리 앱 오리진이 등록돼 있어야 한다.
 - `VITE_BLOG_LOGIN_URL`: 블로그 `/admin-login` 주소. 끝 슬래시는 없어야 한다(`src/lib/env.ts`의 `trimTrailingSlash`가 제거한다). 값은 문서에 쓰지 않는다.
 - `.env`는 열거나 수정하지 않는다(사용자가 허용한 경우만). 값 확인이 필요하면 키 이름과 형식만 점검한다.
 
 ## 아키텍처
 
-블로그(Next.js, `playground`)를 관리하는 개인용 관리자 앱이다. 블로그 글은 블로그 API를 직접 호출하고, 할 일·사이트 모음·글감 아이디어는 자체 백엔드(`server/`, 아직 없음)를 쓰는 계획이다. 전체 설계는 `docs/plan.md`를 본다.
+블로그(Next.js, `playground`)를 관리하는 개인용 관리자 앱이다. 블로그 글은 블로그 API를 직접 호출하고, 할 일·사이트 모음·글감 아이디어는 자체 백엔드(`server/`)를 쓴다. 지금 구현된 서버 API는 글감 저장(`POST /ideas`)뿐이고, 나머지 도메인 API는 계획 단계다. 전체 설계는 `docs/plan.md`를 본다.
 
 ### 데이터 조회 경로
 
@@ -34,6 +36,8 @@ feature의 *-api.ts  →  use-*.ts 훅(useFetch + useCallback)  →  페이지/�
         ↓
 src/lib/api-client.ts의 apiGet  →  fetch
 ```
+
+자체 서버로 보내는 쓰기는 `apiPost(path, body, { baseUrl: SERVER_API_URL })`로 같은 요청 코어를 탄다(`baseUrl`을 생략하면 블로그 API). 글감 저장은 `features/ideas/ideas-api.ts`의 `createIdea`와 `use-save-idea.ts`의 `useSaveIdea`(처리 중 상태, 중복 요청 차단)를 쓴다.
 
 - `apiGet`·`apiPatch`·`apiDelete`(`src/lib/api-client.ts`)는 하나의 내부 요청 함수(`request`)를 공유한다. 쿼리를 만들고, 세션 토큰이 있으면 `Authorization: Bearer`를 붙이며, 실패하면 `ApiError(status)`를 던지고, 204처럼 본문이 없는 응답은 `undefined`로 돌려준다. 401/403이면 저장된 토큰을 지우고 재로그인한다(아래 "인증과 로그인 흐름"). 쓰기(PATCH·DELETE)도 읽기와 같은 인증·재로그인 규칙을 탄다.
 - 토큰은 `sessionStorage`에 JWT로 저장한다(`src/lib/auth-token.ts`). 만료 30초 전부터 만료로 취급한다. 토큰은 블로그 로그인 후 `/auth/callback`이 저장한다(아래 "인증과 로그인 흐름").

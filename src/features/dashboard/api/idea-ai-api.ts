@@ -1,3 +1,4 @@
+import { IDEA_MEMO_MAX_LENGTH, IDEA_TITLE_MAX_LENGTH } from '../../ideas/idea-types';
 import { POST_TYPES } from '../../posts/post-types';
 import type { ChatMessage, IdeaDraft, IdeaSuggestion } from '../dashboard-mock';
 
@@ -12,9 +13,12 @@ const REPLY_INSTRUCTION =
   '사용자의 주제에 맞는 글감을 1~3개 제안하고, 종류는 PROJECT, LAB, DEV_LOG 중 하나로 고른다. ' +
   'text에는 짧은 안내 문장을 쓴다.';
 
+// 저장 한도(서버 검증, 입력창 maxLength)를 넘지 않도록 초안 단계에서 글자 수를 알린다
 const SUMMARY_INSTRUCTION =
   '지금까지의 대화를 바탕으로 저장할 글감 하나를 정리한다. 한국어로 답한다. ' +
-  'title은 한 줄 제목, memo는 "- "로 시작하는 핵심 메모 목록(줄바꿈 구분), type은 PROJECT, LAB, DEV_LOG 중 하나다.';
+  `title은 한 줄 제목(${IDEA_TITLE_MAX_LENGTH}자 이내), ` +
+  `memo는 "- "로 시작하는 핵심 메모 목록(줄바꿈 구분, ${IDEA_MEMO_MAX_LENGTH}자 이내), ` +
+  'type은 PROJECT, LAB, DEV_LOG 중 하나다.';
 
 const SUMMARY_REQUEST = '위 대화를 글감 하나로 정리해 주세요.';
 

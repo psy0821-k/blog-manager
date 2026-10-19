@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '../../../lib/api-client';
 import { createIdea } from '../../ideas/ideas-api';
 import type { SavedIdea } from '../../ideas/ideas-api';
 import { generateIdeaReply, summarizeIdeaDraft } from '../api/idea-ai-api';
@@ -212,6 +213,150 @@ describe('IdeaGeneratorCard 대화 저장', () => {
 
       await waitFor(() => expect(mockedCreateIdea).toHaveBeenCalledTimes(1));
       expect(screen.queryByText(/글감으로 저장했어요/)).not.toBeInTheDocument();
+    });
+  });
+});
+
+const INVALID_INPUT_MESSAGE = '입력한 내용을 저장할 수 없어요. 제목과 메모를 확인해 주세요.';
+const AUTH_MESSAGE = '로그인이 만료됐거나 권한이 없어요. 다시 로그인해 주세요.';
+const NETWORK_MESSAGE = '서버에 연결하지 못했어요. 네트워크를 확인하고 다시 시도해 주세요.';
+const serverErrorMessage = (status: number) => `서버 오류로 저장하지 못했어요. 잠시 후 다시 시도해 주세요. (${status})`;
+
+/** 다이얼로그에서 저장을 눌러 createIdea가 호출될 때까지 기다린다. */
+async function clickSave(user: User, dialog: HTMLElement, expectedCalls: number) {
+  await user.click(within(dialog).getByRole('button', { name: '저장' }));
+  await waitFor(() => expect(mockedCreateIdea).toHaveBeenCalledTimes(expectedCalls));
+}
+
+describe('IdeaGeneratorCard 저장 실패 안내', () => {
+  describe('예외', () => {
+    it('서버가 500이면 다이얼로그가 열려 있고 안에 서버 오류 안내가 보이며 입력이 그대로이고 저장 버튼이 다시 활성이어야 한다', async () => {
+      const user = userEvent.setup();
+      mockedCreateIdea.mockRejectedValue(new ApiError(500, '실패'));
+      render(<IdeaGeneratorCard />);
+      const dialog = await openSaveDialog(user);
+      const titleInput = within(dialog).getByPlaceholderText('제목');
+      await user.clear(titleInput);
+      await user.type(titleInput, '고친 제목');
+
+      await clickSave(user, dialog, 1);
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(serverErrorMessage(500));
+      expect(within(dialog).getByPlaceholderText('제목')).toHaveValue('고친 제목');
+      expect(within(dialog).getByPlaceholderText('메모')).toHaveValue('- 요약 메모');
+      await waitFor(() => expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled());
+    });
+
+    it('서버가 400이면 입력 내용을 확인하라는 안내가 보이고 입력이 그대로여야 한다', async () => {
+      const user = userEvent.setup();
+      mockedCreateIdea.mockRejectedValue(new ApiError(400, '실패'));
+      render(<IdeaGeneratorCard />);
+      const dialog = await openSaveDialog(user);
+
+      await clickSave(user, dialog, 1);
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(INVALID_INPUT_MESSAGE);
+      expect(within(dialog).getByPlaceholderText('제목')).toHaveValue('요약 제목');
+    });
+
+    it('네트워크 오류이면 연결을 확인하라는 안내가 보이고 입력이 그대로여야 한다', async () => {
+      const user = userEvent.setup();
+      mockedCreateIdea.mockRejectedValue(new TypeError('Failed to fetch'));
+      render(<IdeaGeneratorCard />);
+      const dialog = await openSaveDialog(user);
+
+      await clickSave(user, dialog, 1);
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(NETWORK_MESSAGE);
+      expect(within(dialog).getByPlaceholderText('제목')).toHaveValue('요약 제목');
+    });
+
+    it('서버가 403이면 로그인 안내가 보여야 한다', async () => {
+      const user = userEvent.setup();
+      mockedCreateIdea.mockRejectedValue(new ApiError(403, '실패'));
+      render(<IdeaGeneratorCard />);
+      const dialog = await openSaveDialog(user);
+
+      await clickSave(user, dialog, 1);
+
+      expect(await within(dialog).findByRole('alert')).toHaveTextContent(AUTH_MESSAGE);
+    });
+  });
+
+  describe('정상', () => {
+    it('오류 문구가 보이는 상태에서 내용을 고쳐 다시 저장해 성공하면 오류 문구가 사라지고 다이얼로그가 닫히며 저장 안내가 보여야 한다', async () => {
+      const user = userEvent.setup();
+      mockedCreateIdea.mockRejectedValueOnce(new ApiError(500, '실패'));
+      render(<IdeaGeneratorCard />);
+      const dialog = await openSaveDialog(user);
+      await clickSave(user, dialog, 1);
+      await within(dialog).findByRole('alert');
+      const titleInput = within(dialog).getByPlaceholderText('제목');
+      await user.clear(titleInput);
+      await user.type(titleInput, '고친 제목');
+
+      await clickSave(user, dialog, 2);
+
+      expect(await screen.findByText(/서버가 돌려준 제목.*글감으로 저장했어요/)).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(mockedCreateIdea).toHaveBeenLastCalledWith({ title: '고친 제목', memo: '- 요약 메모', type: 'LAB' });
+    });
+  });
+
+  describe('경계', () => {
+    it('오류 문구가 보이는 상태에서 다시 저장하면 요청이 끝나기 전까지 이전 오류 문구가 보이지 않아야 한다', async () => {
+      const user = userEvent.setup();
+      const deferred = createDeferred();
+      mockedCreateIdea.mockRejectedValueOnce(new ApiError(500, '실패'));
+      render(<IdeaGeneratorCard />);
+      const dialog = await openSaveDialog(user);
+      await clickSave(user, dialog, 1);
+      await within(dialog).findByRole('alert');
+      mockedCreateIdea.mockReturnValue(deferred.promise);
+
+      await clickSave(user, dialog, 2);
+
+      await within(dialog).findByRole('button', { name: '저장 중…' });
+      expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
+
+      deferred.resolve(SAVED);
+      await screen.findByText(/글감으로 저장했어요/);
+    });
+
+    it('저장이 실패한 뒤 취소로 닫고 다시 "대화 저장"으로 열면 오류 문구 없이 새 초안이 보여야 한다', async () => {
+      const user = userEvent.setup();
+      mockedCreateIdea.mockRejectedValue(new ApiError(500, '실패'));
+      render(<IdeaGeneratorCard />);
+      const dialog = await openSaveDialog(user);
+      await clickSave(user, dialog, 1);
+      await within(dialog).findByRole('alert');
+      mockedSummarize.mockResolvedValue({ title: '새 초안 제목', memo: '- 새 메모', type: 'PROJECT' });
+
+      await user.click(within(dialog).getByRole('button', { name: '취소' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      await user.click(screen.getByRole('button', { name: '대화 저장' }));
+
+      const reopened = await screen.findByRole('dialog', { name: '대화 내용을 글감으로 저장' });
+      expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument();
+      expect(within(reopened).getByPlaceholderText('제목')).toHaveValue('새 초안 제목');
+    });
+
+    it('저장이 실패한 뒤 Esc로 닫고 다시 열어도 오류 문구 없이 새 초안이 보여야 한다', async () => {
+      const user = userEvent.setup();
+      mockedCreateIdea.mockRejectedValue(new ApiError(500, '실패'));
+      render(<IdeaGeneratorCard />);
+      const dialog = await openSaveDialog(user);
+      await clickSave(user, dialog, 1);
+      await within(dialog).findByRole('alert');
+      mockedSummarize.mockResolvedValue({ title: '새 초안 제목', memo: '- 새 메모', type: 'PROJECT' });
+
+      await user.keyboard('{Escape}');
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      await user.click(screen.getByRole('button', { name: '대화 저장' }));
+
+      const reopened = await screen.findByRole('dialog', { name: '대화 내용을 글감으로 저장' });
+      expect(within(reopened).queryByRole('alert')).not.toBeInTheDocument();
+      expect(within(reopened).getByPlaceholderText('제목')).toHaveValue('새 초안 제목');
     });
   });
 });

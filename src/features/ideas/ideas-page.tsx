@@ -3,12 +3,17 @@ import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { IdeaDetailDialog } from './idea-detail-dialog'
+import { IdeaEditDialog } from './idea-edit-dialog'
+import type { IdeaEditInput } from './idea-edit-dialog'
+import { IdeaQuickAdd } from './idea-quick-add'
 import { IdeaTable } from './idea-table'
 import { IDEA_STATUS_LABELS, IDEA_STATUSES } from './idea-types'
 import type { IdeaStatus } from './idea-types'
-import type { SavedIdea } from './ideas-api'
+import type { NewIdeaInput, SavedIdea } from './ideas-api'
 import { useIdeaActions } from './use-idea-actions'
 import { useIdeas } from './use-ideas'
+import { useSaveIdea } from './use-save-idea'
+import { useUpdateIdea } from './use-update-idea'
 
 const STATUS_PARAM = 'status'
 const ALL_STATUSES = 'all'
@@ -22,7 +27,43 @@ export function IdeasPage() {
   const status = parseStatus(searchParams.get(STATUS_PARAM))
   const { state, reload } = useIdeas(status)
   const { isPending, errorMessage, changeStatus } = useIdeaActions(reload)
+  const { isSaving: isAdding, errorMessage: addErrorMessage, save } = useSaveIdea()
+  const { isSaving: isUpdating, errorMessage: updateErrorMessage, update, resetError } = useUpdateIdea()
   const [selectedIdea, setSelectedIdea] = useState<SavedIdea | null>(null)
+  const [editingIdea, setEditingIdea] = useState<SavedIdea | null>(null)
+
+  async function addIdea(input: NewIdeaInput) {
+    const saved = await save(input)
+
+    if (saved) reload()
+
+    return saved
+  }
+
+  function startEdit(idea: SavedIdea) {
+    resetError()
+    setSelectedIdea(null)
+    setEditingIdea(idea)
+  }
+
+  // 수정을 접으면 상세 모달로 돌아간다
+  function cancelEdit() {
+    resetError()
+    setSelectedIdea(editingIdea)
+    setEditingIdea(null)
+  }
+
+  async function saveEdit(input: IdeaEditInput) {
+    if (!editingIdea) return
+
+    const updated = await update(editingIdea.id, input)
+
+    if (updated) {
+      reload()
+      setEditingIdea(null)
+      setSelectedIdea(updated)
+    }
+  }
 
   function changeStatusFilter(value: string) {
     setSearchParams(
@@ -44,6 +85,8 @@ export function IdeasPage() {
   return (
     <section className="mx-auto max-w-5xl space-y-4 p-6">
       <h1 className="text-xl font-semibold">글감 아이디어</h1>
+
+      <IdeaQuickAdd isSaving={isAdding} errorMessage={addErrorMessage} onAdd={addIdea} />
 
       <Tabs value={status ?? ALL_STATUSES} onValueChange={changeStatusFilter}>
         <TabsList>
@@ -84,7 +127,15 @@ export function IdeasPage() {
           />
         ))}
 
-      <IdeaDetailDialog idea={selectedIdea} onClose={() => setSelectedIdea(null)} />
+      <IdeaDetailDialog idea={selectedIdea} onClose={() => setSelectedIdea(null)} onEdit={startEdit} />
+
+      <IdeaEditDialog
+        idea={editingIdea}
+        isSaving={isUpdating}
+        errorMessage={updateErrorMessage}
+        onClose={cancelEdit}
+        onSave={input => void saveEdit(input)}
+      />
     </section>
   )
 }

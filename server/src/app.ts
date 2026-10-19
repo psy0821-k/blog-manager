@@ -9,6 +9,7 @@ import { checkHealth } from './health/check-health'
 import { handleBodyError, parseJsonBody } from './http/json-body'
 import { createIdeaHandler } from './ideas/create-idea-handler'
 import { createListIdeasHandler } from './ideas/list-ideas-handler'
+import { createUpdateIdeaHandler } from './ideas/update-idea-handler'
 import type { IdeaRepository } from './ideas/idea-types'
 
 export interface AppDependencies {
@@ -46,6 +47,7 @@ export function createApp({ pingDatabase, authSecret, adminAppOrigin, ideaReposi
   if (ideaRepository) {
     app.get('/ideas', createListIdeasHandler(ideaRepository))
     app.post('/ideas', createIdeaHandler(ideaRepository))
+    app.patch('/ideas/:id', createUpdateIdeaHandler(ideaRepository))
   }
 
   app.use(handleBodyError)

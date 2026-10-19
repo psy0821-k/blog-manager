@@ -123,6 +123,23 @@ curl "http://localhost:8787/ideas?status=doing" -H "Authorization: Bearer <관�
 
 성공하면 `{ data: [{ id, title, memo, type, status, createdAt }] }`을 200으로 돌려준다. 실패는 `INVALID_STATUS`(400) 외에는 저장 API와 같은 reason을 쓴다.
 
+### 수정 (`PATCH /ideas/:id`)
+
+글감의 일부 필드만 고친다. 수정된 글감을 200으로 돌려주고, 응답 형태는 목록 항목과 같다.
+
+```bash
+curl -X PATCH http://localhost:8787/ideas/<글감 id>   -H "Authorization: Bearer <관리자 토큰>"   -H "Content-Type: application/json"   -d '{"status":"doing"}'
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `title` | 보내면 앞뒤 공백을 뺀 길이가 1~100자 |
+| `memo` | 보내면 최대 2000자. 빈 문자열은 메모를 지운다 |
+| `type` | 보내면 `PROJECT`, `LAB`, `DEV_LOG` 중 하나 |
+| `status` | 보내면 `todo`, `doing`, `done` 중 하나 |
+
+위 네 필드 중 하나 이상을 보내야 하고(없으면 400 `INVALID_BODY`), 그 밖의 필드는 무시한다. 잘못된 필드는 400(`INVALID_TITLE`, `INVALID_MEMO`, `INVALID_TYPE`, `INVALID_STATUS`)이다. `id`가 uuid 형식이 아니거나 없는 글감이면 404 `IDEA_NOT_FOUND`다(형식 검사가 본문 검사보다 먼저다).
+
 ## 문제 해결
 
 | 증상 | 확인할 것 |

@@ -23,10 +23,20 @@ export interface IdeaListFilter {
   status?: IdeaStatus
 }
 
+// 검증을 통과한 부분 수정 값. 하나 이상 있다
+export interface IdeaPatch {
+  title?: string
+  memo?: string
+  type?: IdeaType
+  status?: IdeaStatus
+}
+
 export interface IdeaRepository {
   create(idea: NewIdea): Promise<Idea>
   // updatedAt 내림차순, 최대 IDEA_LIST_LIMIT건
   list(filter: IdeaListFilter): Promise<Idea[]>
+  // 없는 id면 null
+  update(id: string, patch: IdeaPatch): Promise<Idea | null>
 }
 
 export type IdeaFailureReason =
@@ -35,6 +45,7 @@ export type IdeaFailureReason =
   | 'INVALID_MEMO'
   | 'INVALID_TYPE'
   | 'INVALID_STATUS'
+  | 'IDEA_NOT_FOUND'
   | 'DATABASE_URL_MISSING'
   | 'DATABASE_UNREACHABLE'
   | 'INTERNAL_ERROR'

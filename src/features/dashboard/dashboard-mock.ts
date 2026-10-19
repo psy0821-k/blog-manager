@@ -19,7 +19,7 @@ export interface TodoSummaryItem {
 
 /** 대시보드 아이디어 카드에서 쓰는 글감 요약. 상태가 doing이면 진행 중으로 표시한다. */
 export interface IdeaSummary {
-  id: number;
+  id: string;
   title: string;
   status: IdeaStatus;
 }
@@ -44,14 +44,6 @@ export const MOCK_TODOS: TodoSummaryItem[] = [
   { id: 1, title: '대시보드 퍼블리싱', dueLabel: '오늘', done: true },
   { id: 2, title: '백엔드 뼈대 구성', dueLabel: '내일', done: false },
   { id: 3, title: '임시저장 글 정리', dueLabel: '3일 뒤', done: false },
-];
-
-// 'doing' 항목을 모두 'todo'로 바꾸면 "진행 중인 아이디어 없음" 상태를 확인할 수 있다
-export const MOCK_IDEAS: IdeaSummary[] = [
-  { id: 1, title: 'Gemini 무료 티어로 글감 아이디어 제안 기능 붙이기', status: 'doing' },
-  { id: 2, title: 'shadcn/ui 사이드바로 관리자 레이아웃 만들기', status: 'todo' },
-  { id: 3, title: '주간 발행 목표로 글쓰기 습관 추적하기', status: 'todo' },
-  { id: 4, title: 'Neon 서버리스 Postgres 무료 티어 구성', status: 'done' },
 ];
 
 /** 대화를 요약해 만든 글감 초안. 저장 전에 사용자가 수정할 수 있다. */

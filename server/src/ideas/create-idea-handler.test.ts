@@ -18,7 +18,7 @@ function createFakeRepository(create?: IdeaRepository['create']) {
       (async (idea: NewIdea): Promise<Idea> => ({ id: 'idea-1', ...idea, status: 'todo', createdAt: SAVED_AT })),
   )
 
-  return { repository: { create: fake, list: async () => [] } satisfies IdeaRepository, create: fake }
+  return { repository: { create: fake, list: async () => [], update: async () => null } satisfies IdeaRepository, create: fake }
 }
 
 /** createApp을 임시 포트에 띄워 baseUrl과 함께 콜백을 실행하고 서버를 닫는다. */

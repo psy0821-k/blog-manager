@@ -5,7 +5,7 @@ export type ValidateIdeaListQueryResult =
   | { ok: true; value: IdeaListFilter }
   | { ok: false; reason: 'INVALID_STATUS' }
 
-function isIdeaStatus(value: unknown): value is IdeaStatus {
+export function isIdeaStatus(value: unknown): value is IdeaStatus {
   return IDEA_STATUSES.some((status) => status === value)
 }
 

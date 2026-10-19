@@ -7,6 +7,7 @@ import { IdeaTable } from './idea-table'
 import { IDEA_STATUS_LABELS, IDEA_STATUSES } from './idea-types'
 import type { IdeaStatus } from './idea-types'
 import type { SavedIdea } from './ideas-api'
+import { useIdeaActions } from './use-idea-actions'
 import { useIdeas } from './use-ideas'
 
 const STATUS_PARAM = 'status'
@@ -20,9 +21,10 @@ export function IdeasPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const status = parseStatus(searchParams.get(STATUS_PARAM))
   const { state, reload } = useIdeas(status)
+  const { isPending, errorMessage, changeStatus } = useIdeaActions(reload)
   const [selectedIdea, setSelectedIdea] = useState<SavedIdea | null>(null)
 
-  function changeStatus(value: string) {
+  function changeStatusFilter(value: string) {
     setSearchParams(
       prev => {
         const next = new URLSearchParams(prev)
@@ -43,7 +45,7 @@ export function IdeasPage() {
     <section className="mx-auto max-w-5xl space-y-4 p-6">
       <h1 className="text-xl font-semibold">글감 아이디어</h1>
 
-      <Tabs value={status ?? ALL_STATUSES} onValueChange={changeStatus}>
+      <Tabs value={status ?? ALL_STATUSES} onValueChange={changeStatusFilter}>
         <TabsList>
           <TabsTrigger value={ALL_STATUSES}>전체</TabsTrigger>
           {IDEA_STATUSES.map(ideaStatus => (
@@ -53,6 +55,12 @@ export function IdeasPage() {
           ))}
         </TabsList>
       </Tabs>
+
+      {errorMessage && (
+        <p role="alert" className="text-sm text-destructive">
+          {errorMessage}
+        </p>
+      )}
 
       {state.status === 'loading' && <p className="text-sm">불러오는 중...</p>}
 
@@ -69,7 +77,11 @@ export function IdeasPage() {
         (state.data.data.length === 0 ? (
           <p className="text-sm">글감이 없습니다.</p>
         ) : (
-          <IdeaTable ideas={state.data.data} onSelect={setSelectedIdea} />
+          <IdeaTable
+            ideas={state.data.data}
+            onSelect={setSelectedIdea}
+            rowStatus={{ isPending, onChange: (idea, nextStatus) => void changeStatus(idea.id, nextStatus) }}
+          />
         ))}
 
       <IdeaDetailDialog idea={selectedIdea} onClose={() => setSelectedIdea(null)} />

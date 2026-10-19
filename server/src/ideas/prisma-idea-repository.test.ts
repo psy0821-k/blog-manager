@@ -18,7 +18,7 @@ const savedIdea: Idea = {
 function createClientStub(create: IdeaClient['idea']['create']) {
   const fake = vi.fn(create)
 
-  return { client: { idea: { create: fake, findMany: async () => [] } } satisfies IdeaClient, create: fake }
+  return { client: { idea: { create: fake, findMany: async () => [], update: async () => savedIdea } } satisfies IdeaClient, create: fake }
 }
 
 /** idea.findMany만 흉내 내는 클라이언트. 실제 DB에는 연결하지 않는다. */
@@ -32,9 +32,28 @@ function createListClientStub(findMany: IdeaClient['idea']['findMany']) {
           throw new Error('list는 create를 부르지 않는다')
         },
         findMany: fake,
+        update: async () => savedIdea,
       },
     } satisfies IdeaClient,
     findMany: fake,
+  }
+}
+
+/** idea.update만 흉내 내는 클라이언트. 실제 DB에는 연결하지 않는다. */
+function createUpdateClientStub(update: IdeaClient['idea']['update']) {
+  const fake = vi.fn(update)
+
+  return {
+    client: {
+      idea: {
+        create: async () => {
+          throw new Error('update는 create를 부르지 않는다')
+        },
+        findMany: async () => [],
+        update: fake,
+      },
+    } satisfies IdeaClient,
+    update: fake,
   }
 }
 
@@ -213,6 +232,88 @@ describe('createPrismaIdeaRepository.list', () => {
     const repository = createPrismaIdeaRepository(() => client)
 
     const error = await repository.list({}).catch((reason: unknown) => reason)
+
+    expect(error).toBeInstanceOf(DatabaseUnreachableError)
+    expect((error as Error).message).not.toContain('leaked-password')
+    expect((error as Error).message).not.toContain('postgresql://')
+  })
+})
+
+describe('createPrismaIdeaRepository.update', () => {
+  const ID = '3f2b8c1e-5a4d-4e7b-9c6a-1d2e3f4a5b6c'
+
+  it('idea.update가 { where: { id }, data: patch }로 호출되고 반환된 글감을 그대로 돌려줘야 한다', async () => {
+    const updated: Idea = { ...savedIdea, status: 'doing' }
+    const { client, update } = createUpdateClientStub(async () => updated)
+    const repository = createPrismaIdeaRepository(() => client)
+
+    const result = await repository.update(ID, { status: 'doing' })
+
+    expect(update).toHaveBeenCalledTimes(1)
+    expect(update).toHaveBeenCalledWith({ where: { id: ID }, data: { status: 'doing' } })
+    expect(result).toEqual(updated)
+  })
+
+  it('저장소를 만들 때는 getClient를 호출하지 않고 update를 부를 때 호출해야 한다', async () => {
+    const { client } = createUpdateClientStub(async () => savedIdea)
+    const getClient = vi.fn(() => client)
+
+    const repository = createPrismaIdeaRepository(getClient)
+    expect(getClient).not.toHaveBeenCalled()
+
+    await repository.update(ID, { status: 'done' })
+    expect(getClient).toHaveBeenCalledTimes(1)
+  })
+
+  it('대상이 없어 P2025 코드의 오류가 나면 null을 돌려줘야 한다', async () => {
+    const { client } = createUpdateClientStub(async () => {
+      throw createPrismaLikeError('P2025')
+    })
+    const repository = createPrismaIdeaRepository(() => client)
+
+    await expect(repository.update(ID, { status: 'doing' })).resolves.toBeNull()
+  })
+
+  it.each(['P1001', 'P1002', 'P1017'])('idea.update가 %s 코드의 오류를 던지면 DatabaseUnreachableError로 바꿔 던져야 한다', async (code) => {
+    const { client } = createUpdateClientStub(async () => {
+      throw createPrismaLikeError(code)
+    })
+    const repository = createPrismaIdeaRepository(() => client)
+
+    await expect(repository.update(ID, { status: 'doing' })).rejects.toBeInstanceOf(DatabaseUnreachableError)
+  })
+
+  it('P2025도 연결 오류도 아닌 오류는 그대로 던져야 한다', async () => {
+    const original = createPrismaLikeError('P2002')
+    const { client } = createUpdateClientStub(async () => {
+      throw original
+    })
+    const repository = createPrismaIdeaRepository(() => client)
+
+    await expect(repository.update(ID, { status: 'doing' })).rejects.toBe(original)
+  })
+
+  it('getClient가 MissingEnvError를 던지면 그대로 전파하고 idea.update는 호출하지 않아야 한다', async () => {
+    const missing = new MissingEnvError('DATABASE_URL')
+    const { client, update } = createUpdateClientStub(async () => savedIdea)
+    const repository = createPrismaIdeaRepository(() => {
+      void client
+      throw missing
+    })
+
+    await expect(repository.update(ID, { status: 'doing' })).rejects.toBe(missing)
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  it('변환된 DatabaseUnreachableError의 메시지에는 원인 오류 메시지(연결 문자열 포함)가 없어야 한다', async () => {
+    const { client } = createUpdateClientStub(async () => {
+      throw Object.assign(new Error('connect failed: postgresql://user:leaked-password@host.example/db'), {
+        code: 'P1001',
+      })
+    })
+    const repository = createPrismaIdeaRepository(() => client)
+
+    const error = await repository.update(ID, { status: 'doing' }).catch((reason: unknown) => reason)
 
     expect(error).toBeInstanceOf(DatabaseUnreachableError)
     expect((error as Error).message).not.toContain('leaked-password')

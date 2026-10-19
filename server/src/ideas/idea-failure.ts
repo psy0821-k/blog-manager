@@ -4,7 +4,7 @@ import { DatabaseUnreachableError } from '../db/prisma-client'
 import type { IdeaFailureBody } from './idea-types'
 
 export interface IdeaFailure {
-  statusCode: 400 | 500 | 503
+  statusCode: 400 | 404 | 500 | 503
   body: IdeaFailureBody
 }
 

@@ -48,6 +48,8 @@ interface RequestOptions {
 
 export interface ApiWriteOptions {
   signal?: AbortSignal
+  /** 생략하면 블로그 API 주소(BLOG_API_URL). 자체 서버는 SERVER_API_URL을 넘긴다. */
+  baseUrl?: string
 }
 
 export interface ApiPostOptions extends ApiWriteOptions {
@@ -106,10 +108,10 @@ export function apiPost<T>(path: string, body: unknown, options: ApiPostOptions 
 
 /** 토큰을 Bearer로 실어 DELETE 요청한다. 성공(204 등 본문 없음)이면 undefined로 resolve한다. */
 export function apiDelete(path: string, options: ApiWriteOptions = {}): Promise<void> {
-  return request<void>(path, { method: 'DELETE', signal: options.signal })
+  return request<void>(path, { method: 'DELETE', signal: options.signal, baseUrl: options.baseUrl })
 }
 
 /** 토큰을 Bearer로 실어 PATCH 요청하고 JSON(없으면 undefined)을 반환한다. */
 export function apiPatch<T>(path: string, body: unknown, options: ApiWriteOptions = {}): Promise<T> {
-  return request<T>(path, { method: 'PATCH', body, signal: options.signal })
+  return request<T>(path, { method: 'PATCH', body, signal: options.signal, baseUrl: options.baseUrl })
 }

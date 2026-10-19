@@ -1,15 +1,19 @@
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { LoaderCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { IDEA_STATUS_LABELS } from '../ideas/idea-types';
 import type { IdeaSummary } from './dashboard-mock';
 
 interface IdeaProgressCardProps {
   ideas: IdeaSummary[];
+  status?: 'loading' | 'success' | 'error';
+  onRetry?: () => void;
 }
 
 /** 진행(doing) 중인 아이디어 제목을 보여 주고, 없으면 대기 중인 아이디어 수를 보여 준다. */
-export function IdeaProgressCard({ ideas }: IdeaProgressCardProps) {
+export function IdeaProgressCard({ ideas, status = 'success', onRetry }: IdeaProgressCardProps) {
   const doingIdeas = ideas.filter(idea => idea.status === 'doing');
   const waitingCount = ideas.filter(idea => idea.status === 'todo').length;
   const [currentIdea, ...otherDoingIdeas] = doingIdeas;
@@ -26,7 +30,20 @@ export function IdeaProgressCard({ ideas }: IdeaProgressCardProps) {
         </CardAction>
       </CardHeader>
       <CardContent>
-        {currentIdea ? (
+        {status === 'loading' ? (
+          <div role="status" aria-label="불러오는 중" className="flex justify-center py-6">
+            <LoaderCircle aria-hidden="true" className="size-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : status === 'error' ? (
+          <div className="flex flex-col items-center gap-3 py-6">
+            <p role="alert" className="text-sm text-muted-foreground">
+              글감을 불러오지 못했습니다.
+            </p>
+            <Button variant="outline" size="sm" onClick={onRetry}>
+              다시 시도
+            </Button>
+          </div>
+        ) : currentIdea ? (
           <div className="space-y-2">
             <Badge>{IDEA_STATUS_LABELS.doing}</Badge>
             <p className="font-medium">{currentIdea.title}</p>

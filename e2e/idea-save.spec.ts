@@ -48,6 +48,13 @@ async function mockIdeaApi(page: Page, delayMs = 0) {
 
   await page.route('**/server-api/ideas', async (route) => {
     const request = route.request()
+
+    // 대시보드의 글감 목록 조회(GET)는 저장 요청이 아니므로 기록하지 않고 빈 목록으로 응답한다
+    if (request.method() !== 'POST') {
+      await route.fulfill({ json: { data: [] } })
+      return
+    }
+
     requests.push({
       method: request.method(),
       authorization: request.headers().authorization,
@@ -73,6 +80,13 @@ async function mockIdeaApiByStatus(page: Page, statuses: number[]) {
 
   await page.route('**/server-api/ideas', async (route) => {
     const request = route.request()
+
+    // 대시보드의 글감 목록 조회(GET)는 저장 요청이 아니므로 기록하지 않고 빈 목록으로 응답한다
+    if (request.method() !== 'POST') {
+      await route.fulfill({ json: { data: [] } })
+      return
+    }
+
     const status = statuses[Math.min(requests.length, statuses.length - 1)]
     requests.push({
       method: request.method(),

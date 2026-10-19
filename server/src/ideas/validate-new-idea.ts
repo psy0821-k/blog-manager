@@ -8,7 +8,7 @@ export type ValidateNewIdeaResult =
   | { ok: true; value: NewIdea }
   | { ok: false; reason: 'INVALID_BODY' | 'INVALID_TITLE' | 'INVALID_MEMO' | 'INVALID_TYPE' }
 
-function isIdeaType(value: unknown): value is IdeaType {
+export function isIdeaType(value: unknown): value is IdeaType {
   return IDEA_TYPES.some((type) => type === value)
 }
 

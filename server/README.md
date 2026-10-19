@@ -29,8 +29,10 @@ DATABASE_URL=   # 풀링 연결 문자열
 DIRECT_URL=     # 직접 연결 문자열
 PORT=           # 비우면 8787
 AUTH_SECRET=    # 블로그가 관리자 토큰을 서명할 때 쓰는 비밀값
+ADMIN_APP_ORIGIN=  # 관리자 앱 오리진(CORS 허용). 비우면 허용 오리진 없음
 ```
 
+- `ADMIN_APP_ORIGIN`은 브라우저에서 이 서버를 호출하는 관리자 앱의 오리진이다. 끝 슬래시 없이 정확히 일치해야 하고, 개발 값은 Vite 개발 서버 오리진(5173 포트)이다. 비워도 서버는 뜨지만 브라우저 호출은 CORS로 막힌다.
 - 루트 `.env`(프런트용)와는 별개 파일이다. 서버 설정은 `server/.env`에만 둔다.
 - 연결 문자열이 `sslmode=require`이면 `pg`가 경고를 낼 수 있다. 동작에는 문제가 없고, 경고를 없애려면 `sslmode=verify-full`로 명시한다.
 

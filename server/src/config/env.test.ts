@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { MissingEnvError, readPort, readRequiredEnv } from './env'
+import { MissingEnvError, readOptionalEnv, readPort, readRequiredEnv } from './env'
+
+describe('readOptionalEnv', () => {
+  it('키에 값이 있을 때 trim한 값을 돌려줘야 한다', () => {
+    expect(readOptionalEnv({ ADMIN_APP_ORIGIN: ' http://localhost:5173 ' }, 'ADMIN_APP_ORIGIN')).toBe(
+      'http://localhost:5173',
+    )
+  })
+
+  it('키가 없을 때 undefined를 돌려줘야 한다', () => {
+    expect(readOptionalEnv({}, 'ADMIN_APP_ORIGIN')).toBeUndefined()
+  })
+
+  it('값이 빈 문자열 또는 공백뿐일 때 undefined를 돌려줘야 한다', () => {
+    expect(readOptionalEnv({ ADMIN_APP_ORIGIN: '' }, 'ADMIN_APP_ORIGIN')).toBeUndefined()
+    expect(readOptionalEnv({ ADMIN_APP_ORIGIN: '   ' }, 'ADMIN_APP_ORIGIN')).toBeUndefined()
+  })
+})
 
 describe('readRequiredEnv', () => {
   it('키에 값이 있을 때 그 값을 돌려줘야 한다', () => {

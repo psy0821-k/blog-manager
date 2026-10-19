@@ -33,3 +33,9 @@ export function readPort(source: EnvSource): number {
 
   return port
 }
+
+export function readOptionalEnv(source: EnvSource, key: string): string | undefined {
+  const value = source[key]?.trim()
+
+  return value || undefined
+}

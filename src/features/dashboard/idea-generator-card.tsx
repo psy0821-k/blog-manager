@@ -3,6 +3,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input';
 import { Save, Send, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useSaveIdea } from '../ideas/use-save-idea';
 import { generateIdeaReply, IdeaAiError, summarizeIdeaDraft } from './api/idea-ai-api';
 import type { ChatMessage, IdeaDraft } from './dashboard-mock';
 import { IdeaChatMessage } from './idea-chat-message';
@@ -27,6 +28,7 @@ export function IdeaGeneratorCard() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const nextIdRef = useRef(1);
+  const { isSaving, errorMessage: saveErrorMessage, save, resetError } = useSaveIdea();
 
   // 새 메시지가 생기면 대화 영역만 맨 아래로 스크롤한다
   useEffect(() => {
@@ -93,9 +95,19 @@ export function IdeaGeneratorCard() {
     }
   };
 
-  const handleSaveDraft = (savedDraft: IdeaDraft) => {
-    setSavedTitle(savedDraft.title);
+  // 서버에 저장하고, 성공했을 때만 다이얼로그를 닫는다. 실패하면 입력을 그대로 두고 다이얼로그 안에 안내한다
+  const handleSaveDraft = async (savedDraft: IdeaDraft) => {
+    const saved = await save(savedDraft);
+    if (!saved) return;
+
+    setSavedTitle(saved.title);
     setDraft(null);
+  };
+
+  // 닫으면 저장 실패 안내도 지워서 다시 열 때 새 초안만 보이게 한다
+  const handleCloseDialog = () => {
+    setDraft(null);
+    resetError();
   };
 
   return (
@@ -144,7 +156,15 @@ export function IdeaGeneratorCard() {
           </Button>
         </form>
       </CardContent>
-      {draft && <IdeaSaveDialog draft={draft} onClose={() => setDraft(null)} onSave={handleSaveDraft} />}
+      {draft && (
+        <IdeaSaveDialog
+          draft={draft}
+          isSaving={isSaving}
+          errorMessage={saveErrorMessage}
+          onClose={handleCloseDialog}
+          onSave={handleSaveDraft}
+        />
+      )}
     </Card>
   );
 }

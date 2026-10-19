@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => {
   // 프록시 대상은 서버 측 전용 변수라 VITE_ 접두사 없이 직접 읽는다
   const env = loadEnv(mode, process.cwd(), '')
   const proxyTarget = env.BLOG_API_PROXY_TARGET
+  const serverProxyTarget = env.SERVER_API_PROXY_TARGET
   const geminiApiKey = env.GEMINI_API_KEY
 
   return {
@@ -29,6 +30,16 @@ export default defineConfig(({ mode }) => {
       // 블로그의 CORS 설정 전까지 개발 서버가 /api를 중계한다
       proxy: {
         ...(proxyTarget ? { '/api': { target: proxyTarget, changeOrigin: true } } : {}),
+        // 자체 서버(server/)로 중계한다. 서버는 /server-api 접두사를 모르므로 떼고 보낸다
+        ...(serverProxyTarget
+          ? {
+              '/server-api': {
+                target: serverProxyTarget,
+                changeOrigin: true,
+                rewrite: (path: string) => path.replace(/^\/server-api/, ''),
+              },
+            }
+          : {}),
         // Gemini 키는 브라우저로 내보내지 않고 이 프록시가 헤더로만 붙인다. 모델과 경로는 고정한다
         '/ai/generate': {
           target: GEMINI_API_ORIGIN,

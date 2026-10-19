@@ -6,15 +6,20 @@ import { createRequireAuth } from './auth/require-auth'
 import { createVerifyAdminToken } from './auth/verify-admin-token'
 import { createCors } from './cors/create-cors'
 import { checkHealth } from './health/check-health'
+import { handleBodyError, parseJsonBody } from './http/json-body'
+import { createIdeaHandler } from './ideas/create-idea-handler'
+import type { IdeaRepository } from './ideas/idea-types'
 
 export interface AppDependencies {
   pingDatabase: PingDatabase
   // 없거나 공백뿐이면 인증 미설정으로 취급한다
   authSecret?: string
   adminAppOrigin?: string
+  // 있을 때만 POST /ideas를 등록한다
+  ideaRepository?: IdeaRepository
 }
 
-export function createApp({ pingDatabase, authSecret, adminAppOrigin }: AppDependencies): Express {
+export function createApp({ pingDatabase, authSecret, adminAppOrigin, ideaRepository }: AppDependencies): Express {
   const app = express()
 
   app.use(createCors(adminAppOrigin))
@@ -34,6 +39,12 @@ export function createApp({ pingDatabase, authSecret, adminAppOrigin }: AppDepen
   app.get('/auth/check', (_req, res) => {
     res.json({ status: 'ok' })
   })
+
+  // 본문은 인증을 통과한 요청만 읽는다
+  app.use(parseJsonBody)
+  if (ideaRepository) app.post('/ideas', createIdeaHandler(ideaRepository))
+
+  app.use(handleBodyError)
 
   return app
 }

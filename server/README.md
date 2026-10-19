@@ -45,7 +45,7 @@ npm install
 npm run db:generate
 ```
 
-`server/generated/`는 git에서 제외돼 있어서, **새 환경에서는 서버를 띄우기 전에 `npm run db:generate`를 먼저 실행해야 한다.** `prisma.config.ts`가 `DIRECT_URL`을 읽으므로 이 값이 `server/.env`에 있어야 한다.
+`server/generated/`는 git에서 제외돼 있어서, **새 환경에서는 서버를 띄우기 전에 `npm run db:generate`를 먼저 실행해야 한다.** `prisma/schema.prisma`가 바뀐 뒤(글감 모델 추가 등)에도 다시 실행한다. `prisma.config.ts`가 `DIRECT_URL`을 읽으므로 이 값이 `server/.env`에 있어야 한다.
 
 ## 4. 마이그레이션 상태 확인
 
@@ -53,7 +53,7 @@ npm run db:generate
 npm run db:status
 ```
 
-`DIRECT_URL`로 연결해 적용 상태를 보여 준다. 아직 도메인 모델이 없어서 적용할 마이그레이션은 없다. 모델이 추가되면 `npm run db:migrate`로 적용한다.
+`DIRECT_URL`로 연결해 적용 상태를 보여 준다. 글감(`ideas` 테이블) 마이그레이션(`prisma/migrations/*_create_ideas`)이 있고, 적용하려면 `npm run db:migrate`를 실행한다(`DIRECT_URL`로 연결한다). 이 마이그레이션은 서버나 테스트가 자동으로 적용하지 않으므로 관리용 DB에 직접 적용해야 한다.
 
 ## 5. 서버 실행과 헬스체크
 
@@ -75,6 +75,38 @@ curl http://localhost:8787/health
 
 실패해도 서버는 종료되지 않는다. 응답과 로그에는 연결 문자열이나 원인 오류 메시지를 남기지 않고 reason 코드만 남긴다.
 
+## 6. 글감 저장 API
+
+`POST /ideas`는 관리자 토큰(`Authorization: Bearer <토큰>`)으로 글감 한 건을 저장하고 201로 응답한다. 위 마이그레이션이 적용돼 있어야 한다.
+
+```bash
+curl -X POST http://localhost:8787/ideas \
+  -H "Authorization: Bearer <관리자 토큰>" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"제목","memo":"메모","type":"LAB"}'
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `title` | 필수. 앞뒤 공백을 뺀 길이가 1~100자 |
+| `memo` | 생략하거나 빈 문자열이면 빈 메모로 저장. 최대 2000자 |
+| `type` | `PROJECT`, `LAB`, `DEV_LOG` 중 하나(대소문자 구분) |
+| `status` | 보내도 무시한다. 저장 직후는 항상 `todo` |
+
+성공하면 `{ id, title, memo, type, status, createdAt }`을 돌려준다.
+
+| 상황 | HTTP | reason |
+|---|---|---|
+| 본문이 없거나 객체가 아니다, 깨진 JSON | 400 | `INVALID_BODY` |
+| 제목·메모·종류가 규칙에 맞지 않다 | 400 | `INVALID_TITLE`, `INVALID_MEMO`, `INVALID_TYPE` |
+| 본문이 16kb를 넘는다 | 413 | `PAYLOAD_TOO_LARGE` |
+| 토큰이 없거나 거부됐다 | 401/403 | 인증 규칙을 따른다 |
+| `DATABASE_URL` 없음 | 503 | `DATABASE_URL_MISSING` |
+| DB에 연결할 수 없다 | 503 | `DATABASE_UNREACHABLE` |
+| 그 밖의 저장 실패 | 500 | `INTERNAL_ERROR` |
+
+실패 응답은 `{"status":"error","reason":"..."}` 형태이고, 로그에도 reason 코드만 남긴다(제목·메모·연결 문자열은 남기지 않는다).
+
 ## 문제 해결
 
 | 증상 | 확인할 것 |
@@ -83,6 +115,7 @@ curl http://localhost:8787/health
 | `/health`가 `DATABASE_URL_MISSING` | `server/.env`에 `DATABASE_URL`을 넣고 서버를 재시작한다(`.env`는 시작할 때만 읽는다). |
 | `/health`가 `DATABASE_UNREACHABLE` | 풀링 연결 문자열이 맞는지, Neon 프로젝트가 켜져 있는지(유휴 후 첫 요청은 느릴 수 있다) 확인한다. |
 | `generated/prisma/client`를 찾을 수 없다 | `npm run db:generate`를 실행한다. |
+| `POST /ideas`가 500 `INTERNAL_ERROR` | 글감 마이그레이션이 적용됐는지 `npm run db:status`로 확인하고, 안 됐다면 `npm run db:migrate`를 실행한다. |
 
 ## 스크립트
 

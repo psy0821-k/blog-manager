@@ -12,13 +12,14 @@ export interface IdeaClient {
       take: number
     }): Promise<Idea[]>
     update(args: { where: { id: string }; data: IdeaPatch }): Promise<Idea>
+    delete(args: { where: { id: string } }): Promise<Idea>
   }
 }
 
 // 연결 자체가 안 될 때 Prisma가 붙이는 코드
 const CONNECTION_ERROR_CODES: readonly string[] = ['P1001', 'P1002', 'P1017']
 const INITIALIZATION_ERROR_NAME = 'PrismaClientInitializationError'
-// 수정할 행이 없을 때 Prisma가 붙이는 코드
+// 수정·삭제할 행이 없을 때 Prisma가 붙이는 코드
 const RECORD_NOT_FOUND_CODE = 'P2025'
 
 function hasErrorCode(error: unknown, codes: readonly string[]): boolean {
@@ -71,6 +72,20 @@ export function createPrismaIdeaRepository(getClient: () => IdeaClient): IdeaRep
           return await client.idea.update({ where: { id }, data: patch })
         } catch (error) {
           if (hasErrorCode(error, [RECORD_NOT_FOUND_CODE])) return null
+          throw error
+        }
+      })
+    },
+
+    async delete(id) {
+      const client = getClient()
+
+      return withConnectionErrorMapped(async () => {
+        try {
+          await client.idea.delete({ where: { id } })
+          return true
+        } catch (error) {
+          if (hasErrorCode(error, [RECORD_NOT_FOUND_CODE])) return false
           throw error
         }
       })

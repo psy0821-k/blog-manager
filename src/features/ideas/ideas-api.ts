@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiPost } from '../../lib/api-client'
+import { apiDelete, apiGet, apiPatch, apiPost } from '../../lib/api-client'
 import { SERVER_API_URL } from '../../lib/env'
 import type { PostType } from '../posts/post-types'
 import type { IdeaStatus } from './idea-types'
@@ -36,7 +36,17 @@ export interface UpdateIdeaInput {
   status?: IdeaStatus
 }
 
+/** 글감 한 건의 경로. updateIdea와 deleteIdea가 공유한다. */
+function buildIdeaPath(id: string): string {
+  return `/ideas/${encodeURIComponent(id)}`
+}
+
 /** 글감의 일부 필드를 고친다. 하나 이상 보내야 하고, 서버가 검증한다. */
 export function updateIdea(id: string, input: UpdateIdeaInput, signal?: AbortSignal): Promise<SavedIdea> {
-  return apiPatch<SavedIdea>(`/ideas/${encodeURIComponent(id)}`, input, { baseUrl: SERVER_API_URL, signal })
+  return apiPatch<SavedIdea>(buildIdeaPath(id), input, { baseUrl: SERVER_API_URL, signal })
+}
+
+/** 글감을 삭제한다. 성공 응답은 본문이 없으므로 반환하지 않는다. */
+export async function deleteIdea(id: string, signal?: AbortSignal): Promise<void> {
+  await apiDelete(buildIdeaPath(id), { baseUrl: SERVER_API_URL, signal })
 }

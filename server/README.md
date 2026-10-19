@@ -140,6 +140,16 @@ curl -X PATCH http://localhost:8787/ideas/<글감 id>   -H "Authorization: Beare
 
 위 네 필드 중 하나 이상을 보내야 하고(없으면 400 `INVALID_BODY`), 그 밖의 필드는 무시한다. 잘못된 필드는 400(`INVALID_TITLE`, `INVALID_MEMO`, `INVALID_TYPE`, `INVALID_STATUS`)이다. `id`가 uuid 형식이 아니거나 없는 글감이면 404 `IDEA_NOT_FOUND`다(형식 검사가 본문 검사보다 먼저다).
 
+### 삭제 (`DELETE /ideas/:id`)
+
+글감 한 건을 지우고 본문 없이 204로 응답한다. 되돌릴 수 없다.
+
+```bash
+curl -X DELETE http://localhost:8787/ideas/<글감 id> -H "Authorization: Bearer <관리자 토큰>"
+```
+
+`id`가 uuid 형식이 아니거나 이미 없는 글감이면 404 `IDEA_NOT_FOUND`다. 그 밖의 실패(503 `DATABASE_URL_MISSING`·`DATABASE_UNREACHABLE`, 500 `INTERNAL_ERROR`)와 인증 규칙(401/403)은 다른 글감 API와 같고, 로그에는 reason 코드만 남긴다.
+
 ## 문제 해결
 
 | 증상 | 확인할 것 |

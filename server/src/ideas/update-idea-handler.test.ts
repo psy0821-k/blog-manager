@@ -25,7 +25,7 @@ function createFakeRepository(update?: IdeaRepository['update']) {
   const fakeList = vi.fn<IdeaRepository['list']>(async () => [UPDATED])
 
   return {
-    repository: { create: fakeCreate, list: fakeList, update: fakeUpdate } satisfies IdeaRepository,
+    repository: { create: fakeCreate, list: fakeList, update: fakeUpdate, delete: async () => false } satisfies IdeaRepository,
     update: fakeUpdate,
     create: fakeCreate,
     list: fakeList,

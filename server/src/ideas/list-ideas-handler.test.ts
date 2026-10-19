@@ -32,7 +32,7 @@ function createFakeRepository(list?: IdeaRepository['list']) {
     throw new Error('GET /ideas는 create를 부르지 않는다')
   })
 
-  return { repository: { create: fakeCreate, list: fakeList, update: async () => null } satisfies IdeaRepository, list: fakeList, create: fakeCreate }
+  return { repository: { create: fakeCreate, list: fakeList, update: async () => null, delete: async () => false } satisfies IdeaRepository, list: fakeList, create: fakeCreate }
 }
 
 /** createApp을 임시 포트에 띄워 baseUrl과 함께 콜백을 실행하고 서버를 닫는다. */

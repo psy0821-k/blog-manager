@@ -1,6 +1,6 @@
 # 로드맵
 
-작성일: 2026-10-16 (진행 상태 갱신: 컨텐츠 관리 완료 시점)
+작성일: 2026-10-16 (진행 상태 갱신: 대화 저장 완료 시점, 2026-10-19)
 
 설계 상세는 `docs/plan.md`를 본다. 이 문서는 **무엇을 어떤 순서로 하는지**만 다룬다.
 운영 주소나 키 값은 이 문서에 쓰지 않는다.
@@ -8,8 +8,11 @@
 ## 현재 상태
 
 - 완료(단계 0·1·2·3): 대시보드 실데이터 3종, **로그인 연동**(블로그 JWT, 가드, 재로그인, 로그아웃, 실패 안내, 개발용 토큰 화면 제거), **바로가기 블로그 링크**, **컨텐츠 관리**(발행됨/임시저장 보기, 편집 링크, 발행 ↔ 임시저장 전환, 확인 후 삭제). 모두 `main`에 반영됐고 이슈 #4~#7, #12~#15는 닫혔다.
+- 완료(단계 4): **자체 백엔드 뼈대**(`server/`: Express, Prisma, Neon 연결과 `/health`, ADMIN 토큰 인증, CORS, 인증 설정 누락 시 503). 이슈 #25, #27~#29는 닫혔다.
+- 일부 완료(단계 7·8): **대화 저장**. 서버에 `ideas` 테이블과 `POST /ideas`가 있고, 대시보드 "대화 저장"이 요약 글감을 서버에 저장하며, 실패하면 입력을 보존한 채 사유별로 안내한다(이슈 #34~#36, PR #37~#40). 글감 목록·조회·수정·삭제와 `/ideas` 화면은 아직 없다. AI 대화는 개발 서버 프록시(`/ai/generate`)가 Gemini를 중계하는 실호출이라 배포 환경에서는 동작하지 않는다.
+- **적용 대기**: `ideas` 마이그레이션(`server/prisma/migrations/*_create_ideas`)은 SQL만 저장소에 있다. 관리용 DB에는 `server/`에서 `npm run db:migrate`로 직접 적용해야 하고, 적용 전에는 `POST /ideas`가 500이다. 상태는 `npm run db:status`로 확인한다.
 - 블로그 쪽 대기: 랩의 쓰기 API(`PATCH`/`DELETE`)가 관리 앱 토큰을 받도록 하는 변경(블로그 PR). 배포 전에는 랩 글 전환·삭제가 거부된다. 프로젝트·개발일지는 지금도 동작한다.
-- 미구현: 자체 백엔드(`server/`), `/todo`, `/reference`, `/ideas`, AI 대화(가짜 응답)
+- 미구현: `/todo`, `/reference`, `/ideas` 화면, 글감 조회·수정·삭제 API, AI 호출의 서버 이전(`ai-client`, `/api/ideas/chat`·`summarize`, 호출 횟수·이력 길이 제한)
 
 ## 단계
 
@@ -58,6 +61,17 @@
 - 삭제 중 같은 글의 전환 버튼이 비활성인지 검증하는 통합 테스트를 보강한다.
 - `shadcn`이 `dependencies`에 있어 `npm audit`에서 직접 의존성 high로 잡힌다(CLI 도구, 번들 미포함). `devDependencies`로 옮기는 것을 검토한다.
 - 오류·빈 상태 UI를 두 번째 사용처(단계 5)에서 공통 컴포넌트로 뽑고, `usePostActions`의 처리 상태 로직도 범용 mutation 훅으로 추출할지 그때 판단한다.
+
+## 후속 과제 (자체 백엔드·대화 저장에서 남긴 것)
+
+- 불일치 오리진의 응답에는 `Vary: Origin`이 붙지 않는다. 중간 캐시가 생기면 허용·비허용 응답이 섞일 수 있어 보완한다(`server/src/cors/create-cors.ts`).
+- `server/.env.example`과 README에 "`AUTH_SECRET`이 비면 서버는 뜨지만 보호 경로가 503"이라는 설명이 없다.
+- 서버 `/health`는 `AUTH_SECRET` 누락 시에도 503을 응답한다(DB 누락보다 우선). 헬스체크가 503이면 서버를 내리는 호스팅이라면 응답 형식을 다시 정한다.
+- 프론트 `IdeaDraft`(`dashboard-mock.ts`)와 `NewIdeaInput`(`ideas-api.ts`)가 같은 모양이다. 실제 코드가 mock 파일의 타입을 import하고 있으니 `ideas` 기능으로 옮겨 하나로 합친다.
+- `useSaveIdea`와 `usePostActions`가 "ref 동기 차단 + 처리 중 state + 상태 코드별 오류 문구" 구조를 따로 가진다. 세 번째 사용처가 생길 때 범용 mutation 훅으로 뽑을지 판단한다. `<p role="alert" className="text-sm text-destructive">`도 세 곳(`idea-generator-card`, `idea-save-dialog`, `post-list-page`)에 같은 모양이다.
+- AI 요약 초안이 글자 수 한도를 넘을 수 있다(프롬프트는 보장이 아니다). 지금은 서버 400과 오류 문구로 안내하며, 초안을 자르는 처리는 없다.
+- 서버 `prisma.config.test.ts`가 병렬 실행 부하로 5초 타임아웃되는 간헐 실패가 있다(단독 실행은 통과). `testTimeout` 상향을 검토한다. E2E도 개발 서버를 새로 띄운 첫 실행에서 "토큰 없이 접속 → 로그인 이동" 2건이 한 번 실패한 적이 있다(`expect.poll` 기본 5초).
+- 글감 저장 요청이 서버에서 400을 주는 경우와 네트워크 오류는 `createIdea`를 mock한 테스트로만 검증된다. 실제 `fetch → apiPost → 문구` 경로는 E2E 500 시나리오만 확인한다.
 
 ## 결정이 필요한 것
 

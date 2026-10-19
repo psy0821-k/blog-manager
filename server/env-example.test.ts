@@ -63,6 +63,23 @@ describe('server/README.md ADMIN_APP_ORIGIN', () => {
   })
 })
 
+describe('server/README.md 글감 API', () => {
+  it('POST /ideas 설명이 있어야 한다', () => {
+    const readme = readFileSync(path.join(SERVER_DIR, 'README.md'), 'utf-8')
+
+    expect(readme).toMatch(/POST \/ideas[^\n]*(글감|201)/)
+  })
+
+  it('글감 마이그레이션 절차(db:migrate, DIRECT_URL)가 설명돼 있어야 한다', () => {
+    const readme = readFileSync(path.join(SERVER_DIR, 'README.md'), 'utf-8')
+    const lines = readme.split(/\r?\n/)
+
+    expect(lines.some((line) => line.includes('글감') && line.includes('마이그레이션'))).toBe(true)
+    expect(readme).toContain('db:migrate')
+    expect(readme).toContain('DIRECT_URL')
+  })
+})
+
 describe('server/.env 커밋 제외', () => {
   it('server/.env는 git 추적 대상에서 제외돼야 한다', () => {
     const result = spawnSync('git', ['check-ignore', '-q', 'server/.env'], { cwd: REPO_ROOT })

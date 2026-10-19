@@ -75,7 +75,7 @@ src/lib/api-client.ts의 apiGet  →  fetch
 
 ### 대시보드는 대부분 가짜 데이터다
 
-`src/features/dashboard/dashboard-mock.ts`의 mock으로 그린다. 예: "아이디어 생성" AI 대화는 `setTimeout` 뒤 고정 응답을 붙이는 가짜이고 실제 AI는 연결되지 않았다. **실데이터로 연결된 것은 "주차별 성실도", "최근 게시글", "임시 저장 게시물" 카드뿐이다.**
+`src/features/dashboard/dashboard-mock.ts`의 mock으로 그린다. 예: "할 일 요약"(`MOCK_TODOS`)과 "아이디어 진행"(`MOCK_IDEAS`) 카드는 아직 고정 데이터다. **실데이터로 연결된 것은 "주차별 성실도", "최근 게시글", "임시 저장 게시물" 카드와 "아이디어 생성" 카드다.** 아이디어 생성의 AI 대화는 개발 서버 프록시(`/ai/generate`)가 Gemini를 중계하는 실호출이라 배포 환경에서는 아직 동작하지 않고(서버 이전은 로드맵 단계 8), "대화 저장"은 자체 서버(`POST /ideas`)에 실제로 저장한다.
 
 주차별 성실도의 흐름:
 `api/weekly-consistency-api.ts`(프로젝트·랩 발행 글을 병렬 조회, 하나라도 실패하면 reject) → `hooks/use-weekly-post-counts.ts`(조회 후 집계) → `weekly-post-counts.ts`(순수 함수: 이번 달을 1일 기준 7일 단위 주차로 계산) → `weekly-consistency-section.tsx`가 상태에 따라 로딩/에러/카드 중 하나를 고른다. 개발일지와 임시저장은 집계하지 않는다.

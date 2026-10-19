@@ -18,12 +18,14 @@ interface IdeaSaveDialogProps {
   draft: IdeaDraft;
   /** 저장 요청이 진행 중이면 저장 버튼을 비활성화하고 "저장 중…"을 보여 준다. */
   isSaving: boolean;
+  /** 저장 실패 안내. 있으면 저장 버튼 위쪽에 알림으로 보여 준다. 입력값은 그대로 둔다. */
+  errorMessage: string | null;
   onClose: () => void;
   onSave: (draft: IdeaDraft) => void;
 }
 
 /** 대화 요약 초안을 확인하고 수정한 뒤 글감으로 저장한다. 열릴 때마다 새로 마운트해 입력값을 초기화한다. */
-export function IdeaSaveDialog({ draft, isSaving, onClose, onSave }: IdeaSaveDialogProps) {
+export function IdeaSaveDialog({ draft, isSaving, errorMessage, onClose, onSave }: IdeaSaveDialogProps) {
   const [title, setTitle] = useState(draft.title);
   const [memo, setMemo] = useState(draft.memo);
   const [type, setType] = useState(draft.type);
@@ -64,6 +66,11 @@ export function IdeaSaveDialog({ draft, isSaving, onClose, onSave }: IdeaSaveDia
               </Button>
             ))}
           </div>
+          {errorMessage && (
+            <p role="alert" className="text-sm text-destructive">
+              {errorMessage}
+            </p>
+          )}
         </div>
 
         <DialogFooter>

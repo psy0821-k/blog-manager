@@ -6,13 +6,21 @@ import { IdeaSaveDialog } from '../idea-save-dialog';
 
 const DRAFT: IdeaDraft = { title: '제목', memo: '- 메모', type: 'LAB' };
 
-function renderDialog({ draft = DRAFT, isSaving = false } = {}) {
+function renderDialog({ draft = DRAFT, isSaving = false, errorMessage = null as string | null } = {}) {
   const onSave = vi.fn();
   const onClose = vi.fn();
 
-  render(<IdeaSaveDialog draft={draft} isSaving={isSaving} onClose={onClose} onSave={onSave} />);
+  const view = render(
+    <IdeaSaveDialog draft={draft} isSaving={isSaving} errorMessage={errorMessage} onClose={onClose} onSave={onSave} />
+  );
 
-  return { onSave, onClose };
+  /** 같은 다이얼로그를 errorMessage만 바꿔 다시 그린다(입력 상태는 유지된다). */
+  const rerenderWithError = (nextErrorMessage: string | null) =>
+    view.rerender(
+      <IdeaSaveDialog draft={draft} isSaving={isSaving} errorMessage={nextErrorMessage} onClose={onClose} onSave={onSave} />
+    );
+
+  return { onSave, onClose, rerenderWithError };
 }
 
 async function findDialog() {
@@ -109,6 +117,48 @@ describe('IdeaSaveDialog', () => {
       const dialog = await findDialog();
 
       expect(within(dialog).getByPlaceholderText('제목')).toHaveValue(longTitle);
+    });
+  });
+
+  describe('오류 문구', () => {
+    const ERROR_MESSAGE = '서버 오류로 저장하지 못했어요. 잠시 후 다시 시도해 주세요. (500)';
+
+    it('errorMessage가 있으면 다이얼로그 안에 role="alert"로 그 문구가 보여야 한다', async () => {
+      renderDialog({ errorMessage: ERROR_MESSAGE });
+      const dialog = await findDialog();
+
+      expect(within(dialog).getByRole('alert')).toHaveTextContent(ERROR_MESSAGE);
+    });
+
+    it('errorMessage가 null이면 다이얼로그 안에 알림이 없어야 한다', async () => {
+      renderDialog({ errorMessage: null });
+      const dialog = await findDialog();
+
+      expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('errorMessage가 있어도 isSaving이 false이면 저장 버튼이 활성이어야 한다', async () => {
+      renderDialog({ errorMessage: ERROR_MESSAGE, isSaving: false });
+      const dialog = await findDialog();
+
+      expect(within(dialog).getByRole('button', { name: '저장' })).toBeEnabled();
+    });
+
+    it('입력을 고친 뒤 errorMessage가 생겨도 입력한 제목·메모·종류가 그대로여야 한다', async () => {
+      const user = userEvent.setup();
+      const { rerenderWithError } = renderDialog();
+      const dialog = await findDialog();
+      const titleInput = within(dialog).getByPlaceholderText('제목');
+      await user.clear(titleInput);
+      await user.type(titleInput, '고친 제목');
+      await user.click(within(dialog).getByRole('button', { name: '개발일지' }));
+
+      rerenderWithError(ERROR_MESSAGE);
+
+      expect(await within(await findDialog()).findByRole('alert')).toHaveTextContent(ERROR_MESSAGE);
+      expect(within(dialog).getByPlaceholderText('제목')).toHaveValue('고친 제목');
+      expect(within(dialog).getByPlaceholderText('메모')).toHaveValue('- 메모');
+      expect(within(dialog).getByRole('button', { name: '개발일지' })).toHaveClass('bg-primary');
     });
   });
 });

@@ -155,6 +155,19 @@ describe('apiPost', () => {
       expect(mockedRedirect).not.toHaveBeenCalled()
     })
 
+    it.each([401, 403])('응답이 %i이지만 재로그인 루프 상태면 토큰만 지우고 재로그인은 호출하지 않으며 ApiError로 거부해야 한다', async (status) => {
+      saveToken(createToken())
+      sessionStorage.setItem('blog-manager-relogin-at', String(Date.now()))
+      fetchMock.mockImplementation(async () => jsonResponse(status))
+
+      const error = await apiPost('/ideas', {}).catch((reason: unknown) => reason)
+
+      expect(error).toBeInstanceOf(ApiError)
+      expect((error as ApiError).status).toBe(status)
+      expect(getToken()).toBeNull()
+      expect(mockedRedirect).not.toHaveBeenCalled()
+    })
+
     it('네트워크 오류이면 fetch의 오류로 거부해야 한다', async () => {
       const networkError = new TypeError('Failed to fetch')
       fetchMock.mockRejectedValue(networkError)

@@ -8,6 +8,7 @@ import { createCors } from './cors/create-cors'
 import { checkHealth } from './health/check-health'
 import { handleBodyError, parseJsonBody } from './http/json-body'
 import { createIdeaHandler } from './ideas/create-idea-handler'
+import { createListIdeasHandler } from './ideas/list-ideas-handler'
 import type { IdeaRepository } from './ideas/idea-types'
 
 export interface AppDependencies {
@@ -15,7 +16,7 @@ export interface AppDependencies {
   // 없거나 공백뿐이면 인증 미설정으로 취급한다
   authSecret?: string
   adminAppOrigin?: string
-  // 있을 때만 POST /ideas를 등록한다
+  // 있을 때만 /ideas 라우트를 등록한다
   ideaRepository?: IdeaRepository
 }
 
@@ -42,7 +43,10 @@ export function createApp({ pingDatabase, authSecret, adminAppOrigin, ideaReposi
 
   // 본문은 인증을 통과한 요청만 읽는다
   app.use(parseJsonBody)
-  if (ideaRepository) app.post('/ideas', createIdeaHandler(ideaRepository))
+  if (ideaRepository) {
+    app.get('/ideas', createListIdeasHandler(ideaRepository))
+    app.post('/ideas', createIdeaHandler(ideaRepository))
+  }
 
   app.use(handleBodyError)
 

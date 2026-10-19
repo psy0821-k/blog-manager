@@ -44,6 +44,25 @@ describe('server/README.md', () => {
   })
 })
 
+describe('server/.env.example ADMIN_APP_ORIGIN', () => {
+  it('ADMIN_APP_ORIGIN 키가 있고 값이 비어 있어야 한다', () => {
+    const entries = parseEnvExample()
+
+    expect(Object.keys(entries)).toContain('ADMIN_APP_ORIGIN')
+    expect(entries.ADMIN_APP_ORIGIN).toBe('')
+  })
+})
+
+describe('server/README.md ADMIN_APP_ORIGIN', () => {
+  it('ADMIN_APP_ORIGIN과 설명(개발 값은 Vite 오리진 5173)이 있어야 한다', () => {
+    const readme = readFileSync(path.join(SERVER_DIR, 'README.md'), 'utf-8')
+
+    expect(readme).toContain('ADMIN_APP_ORIGIN')
+    expect(readme).toContain('5173')
+    expect(readme).toMatch(/ADMIN_APP_ORIGIN[^\n]*(오리진|origin|Origin)/)
+  })
+})
+
 describe('server/.env 커밋 제외', () => {
   it('server/.env는 git 추적 대상에서 제외돼야 한다', () => {
     const result = spawnSync('git', ['check-ignore', '-q', 'server/.env'], { cwd: REPO_ROOT })

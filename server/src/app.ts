@@ -3,16 +3,19 @@ import type { Express } from 'express'
 import type { PingDatabase } from './db/prisma-client'
 import { createRequireAuth } from './auth/require-auth'
 import { createVerifyAdminToken } from './auth/verify-admin-token'
+import { createCors } from './cors/create-cors'
 import { checkHealth } from './health/check-health'
 
 export interface AppDependencies {
   pingDatabase: PingDatabase
   authSecret: string
+  adminAppOrigin?: string
 }
 
-export function createApp({ pingDatabase, authSecret }: AppDependencies): Express {
+export function createApp({ pingDatabase, authSecret, adminAppOrigin }: AppDependencies): Express {
   const app = express()
 
+  app.use(createCors(adminAppOrigin))
   app.use(createRequireAuth(createVerifyAdminToken(authSecret)))
 
   app.get('/health', async (_req, res) => {

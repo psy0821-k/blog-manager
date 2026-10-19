@@ -1,4 +1,4 @@
-export type AuthReason = 'TOKEN_MISSING' | 'TOKEN_INVALID' | 'TOKEN_EXPIRED' | 'FORBIDDEN'
+export type AuthReason = 'TOKEN_MISSING' | 'TOKEN_INVALID' | 'TOKEN_EXPIRED' | 'FORBIDDEN' | 'AUTH_NOT_CONFIGURED'
 
 export interface AuthFailureBody {
   status: 'error'

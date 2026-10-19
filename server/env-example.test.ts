@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 const SERVER_DIR = import.meta.dirname
 const REPO_ROOT = path.resolve(SERVER_DIR, '..')
-const REQUIRED_KEYS = ['DATABASE_URL', 'DIRECT_URL', 'PORT']
+const REQUIRED_KEYS = ['DATABASE_URL', 'DIRECT_URL', 'PORT', 'AUTH_SECRET']
 
 /** KEY=값 형태의 줄만 { 키: 값 }으로 읽는다. 주석과 빈 줄은 건너뛴다. */
 function parseEnvExample(): Record<string, string> {
@@ -21,7 +21,7 @@ function parseEnvExample(): Record<string, string> {
 }
 
 describe('server/.env.example', () => {
-  it('DATABASE_URL, DIRECT_URL, PORT 키가 있어야 한다', () => {
+  it('DATABASE_URL, DIRECT_URL, PORT, AUTH_SECRET 키가 있어야 한다', () => {
     expect(Object.keys(parseEnvExample())).toEqual(expect.arrayContaining(REQUIRED_KEYS))
   })
 
@@ -32,6 +32,15 @@ describe('server/.env.example', () => {
       expect(entries[key]).toBe('')
     }
     expect(readFileSync(path.join(SERVER_DIR, '.env.example'), 'utf-8')).not.toMatch(/postgres(ql)?:\/\//)
+  })
+})
+
+describe('server/README.md', () => {
+  it('AUTH_SECRET과 설명이 있어야 한다', () => {
+    const readme = readFileSync(path.join(SERVER_DIR, 'README.md'), 'utf-8')
+
+    expect(readme).toContain('AUTH_SECRET')
+    expect(readme).toMatch(/AUTH_SECRET[^\n]*(블로그|서명|토큰)/)
   })
 })
 

@@ -28,6 +28,7 @@
 DATABASE_URL=   # 풀링 연결 문자열
 DIRECT_URL=     # 직접 연결 문자열
 PORT=           # 비우면 8787
+AUTH_SECRET=    # 블로그가 관리자 토큰을 서명할 때 쓰는 비밀값
 ```
 
 - 루트 `.env`(프런트용)와는 별개 파일이다. 서버 설정은 `server/.env`에만 둔다.

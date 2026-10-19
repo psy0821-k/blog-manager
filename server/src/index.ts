@@ -18,6 +18,6 @@ const pingDatabase: PingDatabase = async () => {
 
 const port = readPort(process.env)
 
-createApp({ pingDatabase }).listen(port, () => {
+createApp({ pingDatabase, authSecret: readRequiredEnv(process.env, 'AUTH_SECRET') }).listen(port, () => {
   console.log(`서버가 ${port}번 포트에서 실행 중입니다.`)
 })

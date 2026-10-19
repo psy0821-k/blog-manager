@@ -1,9 +1,17 @@
 import { DatabaseUnreachableError } from '../db/prisma-client'
-import type { Idea, IdeaRepository, NewIdea } from './idea-types'
+import { IDEA_LIST_LIMIT } from './idea-types'
+import type { Idea, IdeaRepository, IdeaStatus, NewIdea } from './idea-types'
 
 // PrismaClient 중 글감 저장에 쓰는 부분만 좁힌 타입
 export interface IdeaClient {
-  idea: { create(args: { data: NewIdea }): Promise<Idea> }
+  idea: {
+    create(args: { data: NewIdea }): Promise<Idea>
+    findMany(args: {
+      where: { status: IdeaStatus } | undefined
+      orderBy: { updatedAt: 'desc' }
+      take: number
+    }): Promise<Idea[]>
+  }
 }
 
 // 연결 자체가 안 될 때 Prisma가 붙이는 코드
@@ -17,19 +25,35 @@ function isConnectionError(error: unknown): boolean {
   return 'code' in error && typeof error.code === 'string' && CONNECTION_ERROR_CODES.includes(error.code)
 }
 
-// getClient는 저장할 때 부른다. DATABASE_URL이 없어도 서버가 뜨게 하려는 것이다
+// 연결 오류는 고정 문구의 오류로 바꾼다. 원인 오류의 메시지는 연결 문자열을 담을 수 있다
+async function withConnectionErrorMapped<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run()
+  } catch (error) {
+    if (isConnectionError(error)) throw new DatabaseUnreachableError()
+    throw error
+  }
+}
+
+// getClient는 요청을 처리할 때 부른다. DATABASE_URL이 없어도 서버가 뜨게 하려는 것이다
 export function createPrismaIdeaRepository(getClient: () => IdeaClient): IdeaRepository {
   return {
     async create(idea) {
       const client = getClient()
 
-      try {
-        return await client.idea.create({ data: idea })
-      } catch (error) {
-        // 원인 오류의 메시지는 연결 문자열을 담을 수 있어 고정 문구의 오류로 바꾼다
-        if (isConnectionError(error)) throw new DatabaseUnreachableError()
-        throw error
-      }
+      return withConnectionErrorMapped(() => client.idea.create({ data: idea }))
+    },
+
+    async list({ status }) {
+      const client = getClient()
+
+      return withConnectionErrorMapped(() =>
+        client.idea.findMany({
+          where: status ? { status } : undefined,
+          orderBy: { updatedAt: 'desc' },
+          take: IDEA_LIST_LIMIT,
+        }),
+      )
     },
   }
 }

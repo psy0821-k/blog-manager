@@ -17,6 +17,8 @@ type QueryValue = string | number | undefined
 export interface ApiGetOptions {
   query?: Record<string, QueryValue>
   signal?: AbortSignal
+  /** 생략하면 블로그 API 주소(BLOG_API_URL). 자체 서버는 SERVER_API_URL을 넘긴다. */
+  baseUrl?: string
 }
 
 function buildUrl(path: string, query?: Record<string, QueryValue>, baseUrl = BLOG_API_URL): string {

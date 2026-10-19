@@ -75,7 +75,9 @@ curl http://localhost:8787/health
 
 실패해도 서버는 종료되지 않는다. 응답과 로그에는 연결 문자열이나 원인 오류 메시지를 남기지 않고 reason 코드만 남긴다.
 
-## 6. 글감 저장 API
+## 6. 글감 API
+
+### 저장 (`POST /ideas`)
 
 `POST /ideas`는 관리자 토큰(`Authorization: Bearer <토큰>`)으로 글감 한 건을 저장하고 201로 응답한다. 위 마이그레이션이 적용돼 있어야 한다.
 
@@ -106,6 +108,20 @@ curl -X POST http://localhost:8787/ideas \
 | 그 밖의 저장 실패 | 500 | `INTERNAL_ERROR` |
 
 실패 응답은 `{"status":"error","reason":"..."}` 형태이고, 로그에도 reason 코드만 남긴다(제목·메모·연결 문자열은 남기지 않는다).
+
+### 목록 (`GET /ideas`)
+
+관리자 토큰으로 글감을 최근 수정한 순서로 돌려준다. 페이지네이션은 없고 최대 200건까지 보낸다.
+
+```bash
+curl "http://localhost:8787/ideas?status=doing" -H "Authorization: Bearer <관리자 토큰>"
+```
+
+| 쿼리 | 규칙 |
+|---|---|
+| `status` | 생략하면 전체. `todo`, `doing`, `done` 중 하나만 허용한다(빈 문자열·여러 번 보내기는 400) |
+
+성공하면 `{ data: [{ id, title, memo, type, status, createdAt }] }`을 200으로 돌려준다. 실패는 `INVALID_STATUS`(400) 외에는 저장 API와 같은 reason을 쓴다.
 
 ## 문제 해결
 

@@ -10,17 +10,20 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useState } from 'react';
+import { IDEA_MEMO_MAX_LENGTH, IDEA_TITLE_MAX_LENGTH } from '../ideas/idea-types';
 import { POST_TYPES, POST_TYPE_LABELS } from '../posts/post-types';
 import type { IdeaDraft } from './dashboard-mock';
 
 interface IdeaSaveDialogProps {
   draft: IdeaDraft;
+  /** 저장 요청이 진행 중이면 저장 버튼을 비활성화하고 "저장 중…"을 보여 준다. */
+  isSaving: boolean;
   onClose: () => void;
   onSave: (draft: IdeaDraft) => void;
 }
 
 /** 대화 요약 초안을 확인하고 수정한 뒤 글감으로 저장한다. 열릴 때마다 새로 마운트해 입력값을 초기화한다. */
-export function IdeaSaveDialog({ draft, onClose, onSave }: IdeaSaveDialogProps) {
+export function IdeaSaveDialog({ draft, isSaving, onClose, onSave }: IdeaSaveDialogProps) {
   const [title, setTitle] = useState(draft.title);
   const [memo, setMemo] = useState(draft.memo);
   const [type, setType] = useState(draft.type);
@@ -36,10 +39,16 @@ export function IdeaSaveDialog({ draft, onClose, onSave }: IdeaSaveDialogProps) 
         </DialogHeader>
 
         <div className="space-y-3">
-          <Input value={title} onChange={event => setTitle(event.target.value)} placeholder="제목" />
+          <Input
+            value={title}
+            maxLength={IDEA_TITLE_MAX_LENGTH}
+            onChange={event => setTitle(event.target.value)}
+            placeholder="제목"
+          />
           <Textarea
             className="min-h-32"
             value={memo}
+            maxLength={IDEA_MEMO_MAX_LENGTH}
             onChange={event => setMemo(event.target.value)}
             placeholder="메모"
           />
@@ -61,8 +70,8 @@ export function IdeaSaveDialog({ draft, onClose, onSave }: IdeaSaveDialogProps) 
           <Button variant="outline" onClick={onClose}>
             취소
           </Button>
-          <Button disabled={!canSave} onClick={() => onSave({ title: title.trim(), memo, type })}>
-            저장
+          <Button disabled={!canSave || isSaving} onClick={() => onSave({ title: title.trim(), memo, type })}>
+            {isSaving ? '저장 중…' : '저장'}
           </Button>
         </DialogFooter>
       </DialogContent>

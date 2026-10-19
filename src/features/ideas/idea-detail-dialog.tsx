@@ -18,9 +18,11 @@ interface IdeaDetailDialogProps {
   onClose: () => void
   /** 있으면 "수정" 버튼을 보여 주고 누르면 이 글감으로 호출한다. */
   onEdit?: (idea: SavedIdea) => void
+  /** 있으면 "삭제" 버튼을 보여 주고 누르면 이 글감으로 호출한다. */
+  onDelete?: (idea: SavedIdea) => void
 }
 
-export function IdeaDetailDialog({ idea, onClose, onEdit }: IdeaDetailDialogProps) {
+export function IdeaDetailDialog({ idea, onClose, onEdit, onDelete }: IdeaDetailDialogProps) {
   return (
     <Dialog open={idea !== null} onOpenChange={open => !open && onClose()}>
       <DialogContent>
@@ -47,6 +49,11 @@ export function IdeaDetailDialog({ idea, onClose, onEdit }: IdeaDetailDialogProp
             )}
 
             <DialogFooter>
+              {onDelete && (
+                <Button variant="destructive" onClick={() => onDelete(idea)}>
+                  삭제
+                </Button>
+              )}
               {onEdit && <Button onClick={() => onEdit(idea)}>수정</Button>}
               <DialogClose asChild>
                 <Button variant="outline">닫기</Button>

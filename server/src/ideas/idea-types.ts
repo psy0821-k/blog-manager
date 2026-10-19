@@ -37,6 +37,8 @@ export interface IdeaRepository {
   list(filter: IdeaListFilter): Promise<Idea[]>
   // 없는 id면 null
   update(id: string, patch: IdeaPatch): Promise<Idea | null>
+  // 지웠으면 true, 없는 id면 false
+  delete(id: string): Promise<boolean>
 }
 
 export type IdeaFailureReason =

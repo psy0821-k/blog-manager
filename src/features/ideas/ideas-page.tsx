@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ConfirmDeleteDialog } from '../posts/confirm-delete-dialog'
 import { IdeaDetailDialog } from './idea-detail-dialog'
 import { IdeaEditDialog } from './idea-edit-dialog'
 import type { IdeaEditInput } from './idea-edit-dialog'
@@ -22,15 +23,27 @@ function parseStatus(value: string | null): IdeaStatus | undefined {
   return IDEA_STATUSES.find(status => status === value)
 }
 
+type IdeaDialogKind = 'detail' | 'edit' | 'delete'
+
+/** 한 번에 하나만 열려 있는 모달. 열린 시점의 글감을 함께 저장한다(삭제 대상이 중간에 바뀌지 않도록). */
+type IdeaDialogState = { kind: IdeaDialogKind; idea: SavedIdea } | null
+
+/** 열려 있는 모달이 kind이면 그 글감을, 아니면 null을 돌려준다. */
+function ideaOf(dialog: IdeaDialogState, kind: IdeaDialogKind): SavedIdea | null {
+  return dialog?.kind === kind ? dialog.idea : null
+}
+
 export function IdeasPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const status = parseStatus(searchParams.get(STATUS_PARAM))
   const { state, reload } = useIdeas(status)
-  const { isPending, errorMessage, changeStatus } = useIdeaActions(reload)
+  const { isPending, errorMessage, changeStatus, remove } = useIdeaActions(reload)
   const { isSaving: isAdding, errorMessage: addErrorMessage, save } = useSaveIdea()
   const { isSaving: isUpdating, errorMessage: updateErrorMessage, update, resetError } = useUpdateIdea()
-  const [selectedIdea, setSelectedIdea] = useState<SavedIdea | null>(null)
-  const [editingIdea, setEditingIdea] = useState<SavedIdea | null>(null)
+  const [dialog, setDialog] = useState<IdeaDialogState>(null)
+  const detailIdea = ideaOf(dialog, 'detail')
+  const editingIdea = ideaOf(dialog, 'edit')
+  const deleteTarget = ideaOf(dialog, 'delete')
 
   async function addIdea(input: NewIdeaInput) {
     const saved = await save(input)
@@ -42,15 +55,13 @@ export function IdeasPage() {
 
   function startEdit(idea: SavedIdea) {
     resetError()
-    setSelectedIdea(null)
-    setEditingIdea(idea)
+    setDialog({ kind: 'edit', idea })
   }
 
   // 수정을 접으면 상세 모달로 돌아간다
   function cancelEdit() {
     resetError()
-    setSelectedIdea(editingIdea)
-    setEditingIdea(null)
+    setDialog(editingIdea && { kind: 'detail', idea: editingIdea })
   }
 
   async function saveEdit(input: IdeaEditInput) {
@@ -60,9 +71,21 @@ export function IdeasPage() {
 
     if (updated) {
       reload()
-      setEditingIdea(null)
-      setSelectedIdea(updated)
+      setDialog({ kind: 'detail', idea: updated })
     }
+  }
+
+  // 삭제를 취소하면 상세 모달로 돌아간다
+  function cancelDelete() {
+    setDialog(deleteTarget && { kind: 'detail', idea: deleteTarget })
+  }
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+
+    const handled = await remove(deleteTarget.id)
+
+    if (handled) setDialog(null)
   }
 
   function changeStatusFilter(value: string) {
@@ -122,12 +145,17 @@ export function IdeasPage() {
         ) : (
           <IdeaTable
             ideas={state.data.data}
-            onSelect={setSelectedIdea}
+            onSelect={idea => setDialog({ kind: 'detail', idea })}
             rowStatus={{ isPending, onChange: (idea, nextStatus) => void changeStatus(idea.id, nextStatus) }}
           />
         ))}
 
-      <IdeaDetailDialog idea={selectedIdea} onClose={() => setSelectedIdea(null)} onEdit={startEdit} />
+      <IdeaDetailDialog
+        idea={detailIdea}
+        onClose={() => setDialog(null)}
+        onEdit={startEdit}
+        onDelete={idea => setDialog({ kind: 'delete', idea })}
+      />
 
       <IdeaEditDialog
         idea={editingIdea}
@@ -135,6 +163,14 @@ export function IdeasPage() {
         errorMessage={updateErrorMessage}
         onClose={cancelEdit}
         onSave={input => void saveEdit(input)}
+      />
+
+      <ConfirmDeleteDialog
+        title={deleteTarget?.title ?? null}
+        heading="글감 삭제"
+        isPending={deleteTarget !== null && isPending(deleteTarget.id)}
+        onConfirm={() => void confirmDelete()}
+        onCancel={cancelDelete}
       />
     </section>
   )

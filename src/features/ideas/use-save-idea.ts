@@ -19,7 +19,7 @@ export interface UseSaveIdeaResult {
 }
 
 // ApiError는 응답 본문을 담지 않으므로 상태 코드만 안내에 쓴다. ApiError가 아니면 서버에 닿지 못한 것으로 본다
-function toErrorMessage(error: unknown): string {
+export function toSaveErrorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) {
     return NETWORK_MESSAGE
   }
@@ -53,7 +53,7 @@ export function useSaveIdea(): UseSaveIdeaResult {
     try {
       return await createIdea(input)
     } catch (error) {
-      setErrorMessage(toErrorMessage(error))
+      setErrorMessage(toSaveErrorMessage(error))
       return null
     } finally {
       savingRef.current = false

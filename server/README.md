@@ -75,7 +75,9 @@ curl http://localhost:8787/health
 
 실패해도 서버는 종료되지 않는다. 응답과 로그에는 연결 문자열이나 원인 오류 메시지를 남기지 않고 reason 코드만 남긴다.
 
-## 6. 글감 저장 API
+## 6. 글감 API
+
+### 저장 (`POST /ideas`)
 
 `POST /ideas`는 관리자 토큰(`Authorization: Bearer <토큰>`)으로 글감 한 건을 저장하고 201로 응답한다. 위 마이그레이션이 적용돼 있어야 한다.
 
@@ -106,6 +108,47 @@ curl -X POST http://localhost:8787/ideas \
 | 그 밖의 저장 실패 | 500 | `INTERNAL_ERROR` |
 
 실패 응답은 `{"status":"error","reason":"..."}` 형태이고, 로그에도 reason 코드만 남긴다(제목·메모·연결 문자열은 남기지 않는다).
+
+### 목록 (`GET /ideas`)
+
+관리자 토큰으로 글감을 최근 수정한 순서로 돌려준다. 페이지네이션은 없고 최대 200건까지 보낸다.
+
+```bash
+curl "http://localhost:8787/ideas?status=doing" -H "Authorization: Bearer <관리자 토큰>"
+```
+
+| 쿼리 | 규칙 |
+|---|---|
+| `status` | 생략하면 전체. `todo`, `doing`, `done` 중 하나만 허용한다(빈 문자열·여러 번 보내기는 400) |
+
+성공하면 `{ data: [{ id, title, memo, type, status, createdAt }] }`을 200으로 돌려준다. 실패는 `INVALID_STATUS`(400) 외에는 저장 API와 같은 reason을 쓴다.
+
+### 수정 (`PATCH /ideas/:id`)
+
+글감의 일부 필드만 고친다. 수정된 글감을 200으로 돌려주고, 응답 형태는 목록 항목과 같다.
+
+```bash
+curl -X PATCH http://localhost:8787/ideas/<글감 id>   -H "Authorization: Bearer <관리자 토큰>"   -H "Content-Type: application/json"   -d '{"status":"doing"}'
+```
+
+| 필드 | 규칙 |
+|---|---|
+| `title` | 보내면 앞뒤 공백을 뺀 길이가 1~100자 |
+| `memo` | 보내면 최대 2000자. 빈 문자열은 메모를 지운다 |
+| `type` | 보내면 `PROJECT`, `LAB`, `DEV_LOG` 중 하나 |
+| `status` | 보내면 `todo`, `doing`, `done` 중 하나 |
+
+위 네 필드 중 하나 이상을 보내야 하고(없으면 400 `INVALID_BODY`), 그 밖의 필드는 무시한다. 잘못된 필드는 400(`INVALID_TITLE`, `INVALID_MEMO`, `INVALID_TYPE`, `INVALID_STATUS`)이다. `id`가 uuid 형식이 아니거나 없는 글감이면 404 `IDEA_NOT_FOUND`다(형식 검사가 본문 검사보다 먼저다).
+
+### 삭제 (`DELETE /ideas/:id`)
+
+글감 한 건을 지우고 본문 없이 204로 응답한다. 되돌릴 수 없다.
+
+```bash
+curl -X DELETE http://localhost:8787/ideas/<글감 id> -H "Authorization: Bearer <관리자 토큰>"
+```
+
+`id`가 uuid 형식이 아니거나 이미 없는 글감이면 404 `IDEA_NOT_FOUND`다. 그 밖의 실패(503 `DATABASE_URL_MISSING`·`DATABASE_UNREACHABLE`, 500 `INTERNAL_ERROR`)와 인증 규칙(401/403)은 다른 글감 API와 같고, 로그에는 reason 코드만 남긴다.
 
 ## 문제 해결
 

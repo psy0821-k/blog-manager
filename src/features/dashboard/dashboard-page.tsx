@@ -1,7 +1,7 @@
-import { MOCK_IDEAS, MOCK_TODOS } from './dashboard-mock';
+import { MOCK_TODOS } from './dashboard-mock';
 import { DraftPostsSection } from './draft-posts-section';
 import { IdeaGeneratorCard } from './idea-generator-card';
-import { IdeaProgressCard } from './idea-progress-card';
+import { IdeaProgressSection } from './idea-progress-section';
 import { QuickLinksCard } from './quick-links-card';
 import { RecentPostsSection } from './recent-posts-section';
 import { TodoSummaryCard } from './todo-summary-card';
@@ -25,7 +25,7 @@ export function DashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <QuickLinksCard />
-        <IdeaProgressCard ideas={MOCK_IDEAS} />
+        <IdeaProgressSection />
         <TodoSummaryCard todos={MOCK_TODOS} />
       </div>
     </section>
